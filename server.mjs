@@ -6,7 +6,7 @@ import { resolve, sep, extname } from 'node:path';
 import { createCompassBackend } from './server/app.mjs';
 const backend = createCompassBackend();
 const root = resolve(process.env.STATIC_ROOT || fileURLToPath(new URL('./dist/', import.meta.url)));
-const types = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.mp4':'video/mp4','.woff2':'font/woff2','.ttf':'font/ttf','.vtt':'text/vtt; charset=utf-8','.txt':'text/plain; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.ico':'image/x-icon'};
+const types = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.webp':'image/webp','.mp4':'video/mp4','.woff2':'font/woff2','.ttf':'font/ttf','.vtt':'text/vtt; charset=utf-8','.txt':'text/plain; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.ico':'image/x-icon'};
 const server = createServer(async (req,res) => {
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
@@ -15,7 +15,8 @@ const server = createServer(async (req,res) => {
  try {
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/healthz'){res.writeHead(200,{'Content-Type':'text/plain'}).end(req.method==='HEAD'?undefined:'ok');return;}
-  const file=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
+  const route = pathname==='/' ? '/index.html' : ['/demo','/demo/'].includes(pathname) ? '/live.html' : pathname;
+  const file=resolve(root,'.'+route);
   if(!file.startsWith(root+sep)){res.writeHead(403).end();return;}
   const info=await stat(file);
   if(!info.isFile()){res.writeHead(404).end();return;}
