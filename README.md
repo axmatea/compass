@@ -1,6 +1,8 @@
 # COMPASS
 
-The active COMPASS design is the dark sci-fi presentation with the adult heroine and luminous animated orb. The root page and #present use this version; /demo.html?deck=0#demo opens the matching guided demo.
+This revision separates the scrollable COMPASS website at `/` from the eight-scene presentation at `/present.html`. Existing `/#present` links remain compatible. Both use the dark sci-fi direction, adult heroine and luminous orb. The guided demo remains at `/demo.html?deck=0#demo`.
+
+This homepage revision is local on `codex/compass-homepage`, not yet published. See [the shared product brief](docs/PRODUCT_BRIEF.md) for product intent, ownership and the implemented/concept boundary.
 
 - Website: https://compass-web-production-da39.up.railway.app/
 - Presentation: https://compass-web-production-da39.up.railway.app/#present
@@ -20,7 +22,8 @@ npm start
 
 ## Source layout
 
-- `src/presentation/`: active sci-fi presentation CSS, JavaScript and optional browser voice adapter.
+- `index.html`, `src/landing/`: scrollable website and prepared interaction.
+- `present.html`, `src/presentation/`: separate sci-fi presentation CSS, JavaScript and optional browser voice adapter.
 - `public/demo.html`: matching self-contained sci-fi guided demo.
 - Other React files in `src/`: preserved imported Higgsfield version, not the active root page.
 - `public/`: local images, fonts, captions, pitch notes, icons and original 60-second film.
@@ -34,11 +37,11 @@ GitHub is now the working source and Railway is the live host. There is no bidir
 
 ## Collaborator setup
 
-`victorfaren` has been invited to GitHub with Write permission. Accept the invitation, clone the repository and work through branches. In Railway, join the existing project as Editor using your own account and link your own GitHub identity. The owner adds project members through Settings → Members. No credentials should be shared in chat or committed; future provider secrets belong in Railway variables.
+`victorfaren` has GitHub Write access; the collaborator account was verified as a Railway project Editor during the previous handoff. Clone the repository and work through branches using your own account. The owner adds project members through Settings → Members. No credentials should be shared in chat or committed; future provider secrets belong in Railway variables.
 
 ## What is implemented
 
-Eight-scene sci-fi presentation, animated orb, optional browser greeting, speaker notes, four scripted conversation paths, editable/downloadable next-step drafts, and the NYC film at /film.html.
+Scrollable website, prepared correction example, eight-scene sci-fi presentation, animated orb, optional browser greeting, speaker notes, four scripted conversation paths, editable/downloadable next-step drafts, and the NYC film at /film.html.
 
 The greeting and guided replies are scripted. Open-ended voice AI, cross-session memory, interruption handling and external actions are not implemented. The optional browser speech features depend on browser support and permissions.
 

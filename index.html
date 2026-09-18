@@ -1,10 +1,100 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="compass-design" content="scifi-heroine-v1"><meta name="theme-color" content="#05090e"><title>COMPASS · Think out loud.</title><meta name="description" content="A cinematic, scripted concept for a conversation that follows your changing thought."><link rel="stylesheet" href="/src/presentation/styles.css"><script type="module" src="/src/presentation/app.js"></script></head><body><canvas id="atmosphere" aria-hidden="true"></canvas><header><a class="brand" href="#" aria-label="First scene">COMPASS</a><span class="concept">Scripted concept</span><a class="demo-link" href="/demo.html?deck=0#demo">Try the demo ↗</a></header><main id="stage" aria-label="COMPASS presentation">
-<section class="scene opening current" data-scene="0" aria-labelledby="title-0"><div class="opening-copy"><p class="eyebrow">A LITTLE SPACE TO THINK</p><h1 id="title-0">Speak naturally.</h1><p class="sub">You don’t need the perfect question.</p><button id="hear" class="pill">Hear COMPASS <span>◖</span></button><a class="pill" href="/film.html">Watch the film ↗</a><p id="voice-status" class="voice-status" role="status">Optional browser voice · scripted greeting</p></div></section>
-<section class="scene human" data-scene="1" aria-labelledby="title-1" hidden><div class="human-image"></div><div class="human-shade"></div><div class="human-copy"><p class="eyebrow">A THOUGHT IN PROGRESS</p><h2 id="title-1">“I want to say yes.<br>But…”</h2><p class="sub">Start before you have it figured out.</p></div></section>
-<section class="scene deadline" data-scene="2" aria-labelledby="title-2" hidden><div class="scene-heading"><p class="eyebrow">THE FIRST THOUGHT</p><h2 id="title-2">“The client wants Friday.”</h2></div><div class="meaning-space"><span class="fixed-fact">FRIDAY <b>requested</b></span><div class="thought-object deadline-object"><span class="object-index">01</span><strong>Deadline?</strong><small>An assumption. Not a fact.</small></div></div></section>
-<section class="scene correction" data-scene="3" aria-labelledby="title-3" hidden><div class="scene-heading"><p class="eyebrow">THE CORRECTION</p><h2 id="title-3">“Actually, it’s the payment.”</h2></div><div class="meaning-space"><span class="fixed-fact confirmed">FRIDAY <b>still works ✓</b></span><div class="correction-route"><span class="old-concern">Deadline</span><span class="route-line" aria-hidden="true"></span><span class="new-concern">Payment</span></div><p class="sub semantic-caption">The concern changes. The fact stays.</p></div></section>
-<section class="scene thread" data-scene="4" aria-labelledby="title-4" hidden><div class="scene-heading"><p class="eyebrow">KEEP THE THREAD</p><h2 id="title-4">“What terms would help?”</h2></div><div class="thread-flow"><span class="thread-chip"><small>GOAL</small>Say yes clearly</span><span class="thread-chip"><small>FACT</small>Friday works</span><span class="thread-chip"><small>CORRECTION</small>Payment matters</span><span class="thread-chip question"><small>OPEN QUESTION</small>Which terms?</span></div></section>
-<section class="scene draft" data-scene="5" aria-labelledby="title-5" hidden><div class="draft-heading"><p class="eyebrow">ONE PRACTICAL NEXT STEP</p><h2 id="title-5">Make it concrete.</h2></div><article class="reply-draft"><span class="draft-label">REPLY DRAFT <b>NOT SENT</b></span><p id="draft-text" aria-label="Friday works for me. Can we agree on 50% upfront and 50% on delivery?"></p><span class="draft-cursor" aria-hidden="true"></span></article></section>
-<section class="scene proof" data-scene="6" aria-labelledby="title-6" hidden><div class="scene-heading"><p class="eyebrow">HONESTLY, TODAY</p><h2 id="title-6">A concept we can test.</h2></div><div class="proof-path"><div><span>01 / BUILT</span><strong>Scripted interaction</strong></div><div><span>02 / NEXT</span><strong>Live voice prototype</strong></div><div><span>03 / NOT MEASURED</span><strong>Real-world usefulness</strong></div></div></section>
-<section class="scene closing" data-scene="7" aria-labelledby="title-7" hidden><div class="horizon"></div><div class="closing-copy"><p class="eyebrow">NAYL × VINCENT</p><h2 id="title-7">Not just an answer.<br><span>A next step.</span></h2><a class="pill primary" href="/demo.html?deck=0#demo">Explore the concept ↗</a></div></section>
-</main><footer><button id="previous" aria-label="Previous scene">←</button><div class="dots" aria-label="Choose a scene"></div><span id="counter" aria-live="polite">01 / 08</span><button id="next" aria-label="Next scene">→</button><button id="notes-toggle" aria-expanded="false" aria-controls="notes">Speaker notes</button></footer><aside id="notes" hidden aria-label="Speaker notes"><button id="notes-close" aria-label="Close speaker notes">×</button><h3 id="note-title"></h3><p id="note-copy"></p><small>Browser speech is optional. No live AI, persistent memory or external actions are connected.</small></aside><div id="screen-reader-status" class="sr-only" aria-live="polite"></div><noscript>This presentation needs JavaScript for navigation. COMPASS is a scripted concept, not a live AI engine.</noscript></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080c10">
+  <meta name="compass-design" content="scifi-homepage-v2">
+  <title>COMPASS · Think out loud. Find what’s next.</title>
+  <meta name="description" content="Explore COMPASS, a scripted concept for turning a half-formed thought into a clear next step. See what works today and what we’re building next.">
+  <link rel="stylesheet" href="/src/landing/styles.css">
+  <script type="module" src="/src/landing/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="COMPASS home">COMPASS</a>
+    <nav aria-label="Main navigation">
+      <a href="#interaction">How it works</a>
+      <a href="#today">What exists</a>
+      <a class="presentation-link" href="/present.html">Presentation <span aria-hidden="true">↗</span></a>
+    </nav>
+    <button class="motion-control" id="motion-control" type="button" aria-pressed="false" aria-label="Pause decorative motion"><span class="motion-symbol" aria-hidden="true">Ⅱ</span><span class="motion-label">Motion on</span></button>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-visual" aria-hidden="true">
+        <img src="/assets/heroine.png" alt="" fetchpriority="high" width="1536" height="1024">
+        <div class="visual-shade"></div>
+        <div class="visual-line"></div>
+      </div>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> A thinking partner · Concept</p>
+        <h1 id="hero-title">Think out loud.<br><span>Find what’s next.</span></h1>
+        <p class="hero-description">Sometimes the hardest part is knowing what’s really bothering you. Start with the unfinished thought. Find one clear next step.</p>
+        <div class="hero-actions"><a class="button button-light" href="#interaction">Experience the idea <span aria-hidden="true">↗</span></a><a class="film-link" href="/film.html"><span class="play-icon" aria-hidden="true">▶</span> Watch the film <small>60 sec</small></a></div>
+        <p class="honesty-note">Scripted demonstration. A live voice engine is not connected.</p>
+      </div>
+      <div class="orb-console" aria-label="Decorative concept visualization">
+        <div class="orb-field" aria-hidden="true"><div class="orb-orbit orbit-one"></div><div class="orb-orbit orbit-two"></div><div class="orb-halo"></div><div class="orb"></div><svg class="wave" viewBox="0 0 420 70"><path d="M0 35 H70 l4 -3 4 6 4 -12 4 18 4 -9 h12 l4 -8 4 16 4 -28 4 40 4 -55 4 68 4 -49 4 34 4 -24 4 10 h90 l4 -8 4 16 4 -32 4 40 4 -52 4 62 4 -41 4 29 4 -22 4 8 H420"/></svg></div>
+        <div class="orb-caption"><span>SPACE TO THINK</span><span class="orb-status">Concept visualization</span></div>
+        <div class="orb-dock" aria-hidden="true"><span class="dock-selected">01 · Speak</span><span>02 · Clarify</span><span>03 · Move forward</span></div>
+      </div>
+      <a class="scroll-cue" href="#problem"><span aria-hidden="true">↓</span> A little space. A clearer thought.</a>
+      <span class="hero-index" aria-hidden="true">COMPASS / EXPLORATION 001</span>
+    </section>
+
+    <section class="problem section-shell reveal" id="problem" aria-labelledby="problem-title">
+      <div class="section-kicker"><span class="section-number">01</span><p class="eyebrow">THE REAL PROBLEM</p></div>
+      <div class="problem-body"><h2 id="problem-title">Your first question<br>isn’t always <span>the real one.</span></h2><p>You start with a deadline. A moment later, you realize it’s about getting paid. A useful conversation should follow the correction, without losing what was already clear.</p><div class="thought-shift" aria-label="Initial assumption: deadline. Corrected concern: payment."><span class="discarded">“Can I do it by Friday?”</span><span class="shift-arrow" aria-hidden="true">↗</span><span>“Can we agree on payment?”</span></div></div>
+    </section>
+
+    <section class="interaction section-shell" id="interaction" aria-labelledby="interaction-title">
+      <div class="section-kicker reveal"><span class="section-number">02</span><p class="eyebrow">ONE CONVERSATION. A DIFFERENT DIRECTION.</p></div>
+      <div class="interaction-grid">
+        <div class="interaction-copy reveal">
+          <h2 id="interaction-title">Keep the thought.<br><span>Change the assumption.</span></h2>
+          <p>A prepared client conversation shows the behavior we want to build. Select each moment to see what changes.</p>
+          <div class="step-controls" role="group" aria-label="Explore the scripted conversation">
+            <button class="step-button is-active" type="button" data-step="0" aria-pressed="true"><span class="step-number">01</span><span><strong>Start with the thought</strong><small>“The client wants Friday…”</small></span><span class="step-arrow" aria-hidden="true">↗</span></button>
+            <button class="step-button" type="button" data-step="1" aria-pressed="false"><span class="step-number">02</span><span><strong>Make a correction</strong><small>“Actually, it’s the payment.”</small></span><span class="step-arrow" aria-hidden="true">↗</span></button>
+            <button class="step-button" type="button" data-step="2" aria-pressed="false"><span class="step-number">03</span><span><strong>Leave with a next step</strong><small>Propose terms before committing.</small></span><span class="step-arrow" aria-hidden="true">↗</span></button>
+          </div>
+          <p class="demo-disclosure">These controls play a fixed scenario. No microphone, AI response, or message sending is involved.</p>
+        </div>
+        <div class="conversation-panel reveal">
+          <div class="panel-top"><span class="mini-brand">COMPASS</span><span class="concept-badge">Scripted concept</span></div>
+          <div class="conversation-content" id="conversation-content">
+            <p class="panel-eyebrow" id="moment-label">01 / THE FIRST THOUGHT</p>
+            <blockquote id="user-line">“The client wants Friday. I’m not sure I can say yes.”</blockquote>
+            <div class="assistant-line"><span class="mini-orb" aria-hidden="true"></span><p id="assistant-line">“Is the deadline the concern?”</p></div>
+            <div class="context-lines" aria-label="Scripted conversation context">
+              <div><span>Goal</span><strong>Reply to the client</strong></div>
+              <div><span>Confirmed fact</span><strong id="fact-line">Client requested Friday</strong></div>
+              <div id="concern-row"><span id="concern-label">Open assumption</span><strong id="concern-line">Deadline?</strong></div>
+              <div><span>Next question</span><strong id="question-line">What makes you hesitate?</strong></div>
+            </div>
+            <div class="draft-box" id="draft-box" hidden><div><label for="reply-draft">YOUR REPLY DRAFT</label><span>NOT SENT</span></div><textarea id="reply-draft" rows="3" spellcheck="true">Friday works for me. Can we agree on 50% upfront and 50% on delivery?</textarea><small>Edit the words here. Sending stays with you.</small></div>
+          </div>
+          <div class="panel-bottom"><span id="panel-state">A thought, still taking shape.</span><button id="reset-demo" type="button" aria-label="Reset scripted conversation">Restart <span aria-hidden="true">↺</span></button></div>
+          <p class="sr-only" id="demo-announcement" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="outcome section-shell reveal" aria-labelledby="outcome-title"><div class="outcome-line" aria-hidden="true"></div><p class="eyebrow">THE POINT IS WHAT HAPPENS NEXT</p><h2 id="outcome-title">A clearer decision.<br><span>A reply you can use.</span></h2><p>Friday stays. Payment terms come first.<br>You decide whether to send the draft.</p><a class="text-link" href="/demo.html?deck=0#demo">Explore the longer scripted demo <span aria-hidden="true">↗</span></a></section>
+
+    <section class="reality section-shell" id="today" aria-labelledby="reality-title">
+      <div class="reality-heading reveal"><div class="section-kicker"><span class="section-number">03</span><p class="eyebrow">WHERE WE ARE</p></div><h2 id="reality-title">An experience to explore.<br><span>A hypothesis to test.</span></h2><p>We’re making the intended behavior visible before claiming it works in an open conversation.</p></div>
+      <div class="reality-columns reveal">
+        <article><p class="reality-label"><span class="status-dot"></span> AVAILABLE TODAY</p><h3>A browser concept.</h3><ul><li>Prepared interactions with a meaningful correction</li><li>Editable reply drafts in the browser</li><li>A concept film and a separate stage presentation</li></ul><a class="text-link" href="/demo.html?deck=0#demo">Try the scripted demo <span aria-hidden="true">↗</span></a></article>
+        <article class="future"><p class="reality-label">PROPOSED · NOT IMPLEMENTED</p><h3>A live voice partner.</h3><ul><li>Open-ended voice understanding and interruption handling</li><li>Persistent memory across conversations</li><li>Actions in other apps, with permission</li></ul><p class="measurement-note">Latency, reliability, and usefulness are not yet measured.</p></article>
+      </div>
+    </section>
+
+    <section class="closing section-shell reveal" aria-labelledby="closing-title"><div class="closing-horizon" aria-hidden="true"></div><p class="eyebrow">NAYL × VINCENT</p><h2 id="closing-title">Not just an answer.<br><span>A next step.</span></h2><div class="closing-actions"><a class="button button-light" href="/demo.html?deck=0#demo">Explore COMPASS <span aria-hidden="true">↗</span></a><a class="button button-outline" href="/present.html">Open presentation <span aria-hidden="true">↗</span></a></div></section>
+  </main>
+  <footer class="site-footer"><a class="wordmark" href="/" aria-label="COMPASS home">COMPASS</a><p>Think out loud. Find what’s next.</p><span>Working concept · NAYL × Vincent</span></footer>
+  <noscript><p class="noscript-note">The scripted example requires JavaScript. You can still read the concept, watch the film, and see what is implemented today.</p></noscript>
+</body>
+</html>
