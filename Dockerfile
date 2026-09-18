@@ -1,7 +1,17 @@
-FROM node:22-alpine
+FROM node:22-alpine AS build
 WORKDIR /app
-COPY --chown=node:node package.json server.mjs ./
-COPY --chown=node:node dist ./dist
-USER node
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY index.html vite.config.ts tsconfig.json ./
+COPY src ./src
+COPY public ./public
+RUN npm run build
+
+FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app/dist ./dist
+COPY server.mjs package.json ./
+USER node
+EXPOSE 8080
 CMD ["node", "server.mjs"]

@@ -1,38 +1,41 @@
 # COMPASS
 
-Public presentation and scripted interactive demonstration, deployed with Railway.
+The editable COMPASS website and cinematic presentation, migrated from Higgsfield to Railway.
+
+- Website: https://compass-web-production-da39.up.railway.app/
+- Presentation: https://compass-web-production-da39.up.railway.app/#present
+- Repository: https://github.com/axmatea/compass (private)
+
+## Develop and deploy
+
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm run build
+npm start
+```
+
+`npm start` serves the production build on http://127.0.0.1:8770/ (or PORT). Use a feature branch and review changes before merging to `main`. Railway is connected to `axmatea/compass`, branch `main`; it builds the Dockerfile and updates the existing public URL. No repository or service duplication is needed. The local `dist` folder is generated output, not editable source.
 
 ## Source layout
 
-- dist/index.html: presentation shell
-- dist/styles.css: visual system and scene choreography
-- dist/app.js: slides, continuous motion and interactions
-- dist/voice-adapter.js: browser greeting adapter; not an AI backend
-- dist/assets/heroine.png: original generated adult heroine
-- dist/demo.html: existing scripted interactive demonstration, opened with ?deck=0#demo
+- `src/`: editable React/TypeScript product, presentation and guided conversation components.
+- `public/`: local images, fonts, captions, pitch notes, icons and original 60-second film.
+- `server.mjs`: Node static server, health endpoint and video range requests.
+- `Dockerfile`: build and production runtime.
+- `MIGRATION.md`: source provenance, changes and verification.
 
-## Repository and collaboration
+## One source of truth
 
-Private repository: https://github.com/axmatea/compass
+GitHub is now the working source and Railway is the live host. There is no bidirectional sync with the Higgsfield editor. Later edits there will not automatically appear here. Import intentional future changes into this repository and deploy through main. Keep Higgsfield for creative assets or as an unchanged archive; this migration does not delete or redirect the old site.
 
-Accept the GitHub collaborator invitation, clone the repository, then run `npm start`. The local presentation is at http://127.0.0.1:8770/. Work in a feature branch and merge reviewed changes into `main`. No API keys belong in this repository.
+## Collaborator setup
 
-For Railway access, use your own account, link your own GitHub identity, and accept an Editor invitation to the existing COMPASS project. Project membership permits deployment; do not create a duplicate project.
+`victorfaren` has been invited to GitHub with Write permission. Accept the invitation, clone the repository and work through branches. In Railway, join the existing project as Editor using your own account and link your own GitHub identity. The owner adds project members through Settings → Members. No credentials should be shared in chat or committed; future provider secrets belong in Railway variables.
 
-## Update the same URL
+## What is implemented
 
-GitHub autodeploy is pending authorization of this new repository in the Railway GitHub App. Once connected to `main`, pushes/merges to that branch will deploy the same service. Until that is confirmed, deploy via the existing authenticated CLI.
+Eight-slide cinematic presentation, timed playback, browser narration, fullscreen, responsive navigation, three scripted conversation paths, editable/downloadable next-step drafts, and local film playback.
 
-From this project directory, run `npx @railway/cli up --service compass-web` after checking changes locally with `npm start`. The linked Railway service retains its generated public domain across updates. Use the existing project, do not create another project. `DEPLOYMENT.md` records the project and service identifiers. The Node server serves only `dist`, listens on Railway’s assigned PORT, and provides `/healthz`. No npm dependencies or external CDNs are required.
-
-An unused Vercel project was created before the hosting choice changed; it has not been deployed.
-
-## Future voice assistant
-
-The current greeting is browser speech synthesis, and the conversation demo is scripted. To connect a real assistant, implement a server-side session endpoint or a separate authorized voice service, then replace the browser adapter with a realtime client. Keep provider secrets in Railway service variables, never in frontend files. Request microphone permission only from an explicit user action. Connect start, stop, speaking and error states to the existing presentation visuals. Do not expose long-lived API keys in the browser or portray scripted playback as live reasoning.
-
-This static deployment does not yet include a voice backend, persistent memory, accounts, automatic sending, or calendar integration. A future server endpoint can be deployed under the same Railway service and domain after its provider and operating budget are selected.
-
-## Provenance
-
-The portrait was generated earlier with the built-in image tool. This iteration uses existing media and code-based abstract orbital graphics. No paid media generation was performed for deployment.
+The greeting and guided replies are scripted. Open-ended voice AI, cross-session memory, interruption handling and external actions are not implemented. The optional browser speech features depend on browser support and permissions.
