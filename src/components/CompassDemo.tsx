@@ -75,12 +75,22 @@ export default function CompassDemo() {
   const a = useCompassAgent()
   const [draft, setDraft] = useState('')
   const logRef = useRef<HTMLOListElement>(null)
+  const planRef = useRef<HTMLDivElement>(null)
   const busy = isBusy(a.orb)
 
   useEffect(() => {
     const el = logRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
   }, [a.turns.length])
+
+  // Phones: keep the plan in view at the moments that matter (first plan, replanning).
+  const planVersion = a.plan?.version ?? 0
+  useEffect(() => {
+    const el = planRef.current
+    if (!el || !planVersion || window.innerWidth > 860) return
+    const r = el.getBoundingClientRect()
+    if (r.top < 60 || r.top > window.innerHeight * 0.45) el.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+  }, [planVersion])
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape' && isBusy(a.orb)) { e.preventDefault(); a.interrupt() } }
@@ -131,25 +141,28 @@ export default function CompassDemo() {
                 : <p className="cv-hint">{a.hasPlan ? 'Change anything. COMPASS adapts mid-action.' : 'Say what you need, then change your mind mid-action.'}</p>}
             </div>
 
-            <div className="cv-controls">
-              <button type="button" className={'cv-mic' + (a.micOn ? ' is-on' : '')} onClick={a.toggleMic} disabled={!a.micSupported} aria-pressed={a.micOn} title={a.micSupported ? 'Hands-free: talk, and talk over COMPASS to interrupt' : 'Voice input not supported in this browser'}>
-                <Mic /><span>{a.micOn ? 'Listening' : 'Talk'}</span>
-              </button>
-              {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title="Interrupt (Esc)">Interrupt</button>}
-            </div>
+            <div className="cv-dock">
+              <div className="cv-controls">
+                <button type="button" className={'cv-mic' + (a.micOn ? ' is-on' : '')} onClick={a.toggleMic} disabled={!a.micSupported} aria-pressed={a.micOn} title={a.micSupported ? 'Hands-free: talk, and talk over COMPASS to interrupt' : 'Voice input not supported in this browser'}>
+                  <Mic /><span>{a.micOn ? 'Listening' : 'Talk'}</span>
+                </button>
+                {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title="Interrupt (Esc)">Interrupt</button>}
+              </div>
 
-            <div className="cv-script">
-              <span className="cv-script-label">{busy && a.hasPlan ? 'Interrupt with' : a.hasPlan ? 'Change the plan' : 'Try saying'}</span>
-              <button type="button" className={'cv-line' + (busy && a.hasPlan ? ' is-urgent' : '')} onClick={() => a.submit(nextLine)}>
-                <span>“{nextLine}”</span><Arrow />
-              </button>
-            </div>
+              <div className="cv-script">
+                <span className="cv-script-label">{busy && a.hasPlan ? 'Interrupt with' : a.hasPlan ? 'Change the plan' : 'Try saying'}</span>
+                <button type="button" className={'cv-line' + (busy && a.hasPlan ? ' is-urgent' : '')} onClick={() => a.submit(nextLine)}>
+                  <span>“{nextLine}”</span><Arrow />
+                </button>
+              </div>
 
-            <form className="cv-composer" onSubmit={send}>
-              <label htmlFor="cv-input" className="cv-sr">Type to COMPASS</label>
-              <input id="cv-input" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? 'Type to interrupt…' : 'Or type it…'} maxLength={500} autoComplete="off" />
-              <button type="submit" disabled={!draft.trim()} aria-label="Send"><Arrow /></button>
-            </form>
+              <form className="cv-composer" onSubmit={send}>
+                <label htmlFor="cv-input" className="cv-sr">Type to COMPASS</label>
+                <input id="cv-input" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? 'Type to interrupt…' : 'Or type it…'} maxLength={500} autoComplete="off" />
+                <button type="submit" disabled={!draft.trim()} aria-label="Send"><Arrow /></button>
+              </form>
+
+            </div>
 
             <ol className="cv-log" ref={logRef} aria-label="Conversation">
               {a.turns.slice(-6).map(t => <li key={t.id} className={'cv-turn is-' + t.who + (t.interrupted ? ' is-cut' : '')}><span>{t.who === 'user' ? 'You' : 'COMPASS'}</span><p>{t.text}{t.interrupted && <em> · cut off</em>}</p></li>)}
@@ -157,7 +170,7 @@ export default function CompassDemo() {
             <p className="cv-notice" role="status">{a.notice}</p>
           </div>
 
-          <div className="cv-plan-col">
+          <div className="cv-plan-col" ref={planRef}>
             <section className={'cv-plan' + (a.orb === 'replanning' ? ' is-replanning' : '')} aria-label="Current plan" aria-live="polite">
               <header><span className="cv-eyebrow">The plan</span>{a.plan && <span className={'cv-rev' + (a.revisions ? ' is-revised' : '')} key={a.plan.version}>v{a.plan.version}{a.revisions ? ' · revised' : ''}</span>}</header>
               {a.plan ? <Plan plan={a.plan} />

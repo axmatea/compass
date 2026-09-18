@@ -7,13 +7,13 @@ export default defineConfig({
     name: "compass-demo-route",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = "/demo.html";
+        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/demo\/?/, "/live.html");
         next();
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = "/demo.html";
+        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/demo\/?/, "/live.html");
         next();
       });
     },
