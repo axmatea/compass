@@ -1,127 +1,123 @@
 /**
- * Local mock of POST /api/turn. Same request/response contract as the real backend.
- * Deterministic parsing, no network, no keys. Results are labelled mock in the UI.
+ * Mock /api/turn = verbatim replay of the backend's recorded live session
+ * (feat/agent-core test/fixtures/dinner-turns.json, copied byte-identical).
+ * Events are re-emitted on the recorded timeline, session-wide, exactly like the real
+ * runtime (an open turn stream also receives later turns' events). No parsing, no
+ * invented state. Anything off-script gets an explicit v1 `error` event saying so.
  */
-import type { AgentState, Intent, PatchOp, ToolResult, TurnRequest, TurnResponse } from './types'
+import fixture from './fixtures/dinner-turns.json'
+import type { AgentEvent, TurnRequest, TurnResponse } from './types'
 
-const sessions = new Map<string, AgentState>()
+type RecordedTurn = { request: TurnRequest; sentAtMs: number; response: TurnResponse }
+const TURNS = (fixture as unknown as { turns: RecordedTurn[] }).turns
+const at = (e: AgentEvent) => Date.parse(e.at)
+const T0 = at(TURNS[0].response.events![0])
+const keyOf = (e: AgentEvent) => [e.type, e.turnId, 'actionId' in e ? e.actionId : '', e.at, 'stage' in e ? e.stage : '', 'text' in e ? e.text : ''].join('|')
+/** Recorded session timeline, deduplicated (each turn stream holds a copy of shared events). */
+const TIMELINE: AgentEvent[] = (() => {
+  const seen = new Set<string>(); const out: AgentEvent[] = []
+  for (const t of TURNS) for (const e of t.response.events ?? []) { const k = keyOf(e); if (!seen.has(k)) { seen.add(k); out.push(e) } }
+  return out.sort((a, b) => at(a) - at(b))
+})()
 
-const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 }
-const CUISINES = ['italian', 'japanese', 'sushi', 'mexican', 'thai', 'french', 'indian', 'chinese', 'korean', 'mediterranean', 'vietnamese', 'greek', 'spanish', 'vegan', 'steakhouse']
-const TASKS: Record<string, string> = { dinner: 'Dinner', lunch: 'Lunch', breakfast: 'Breakfast', brunch: 'Brunch', drinks: 'Drinks', coffee: 'Coffee' }
-const DAYS = ['today', 'tonight', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean)
+function matchTurn(text: string): number {
+  const heard = new Set(words(text))
+  return TURNS.findIndex(t => { const w = words(t.request.text); return w.filter(x => heard.has(x)).length / w.length >= 0.6 })
+}
+const MOCK_LIMIT_MS = 9000
+const MOCK_NOTE = 'Mock mode replays one recorded live session. Interrupt with: "Actually make it 8. Somewhere near Palo Alto." Use ?backend=live for open conversation.'
 
-const title = (s: string) => s.replace(/\b\w/g, c => c.toUpperCase())
+type Listener = (e: AgentEvent) => void
+interface MockSession {
+  listeners: Set<Listener>
+  timers: ReturnType<typeof setTimeout>[]
+  next: number              // next fixture turn index expected
+  pending: Map<number, (r: TurnResponse) => void>
+  cursor: number            // TIMELINE index up to which events were scheduled
+  lastFireAt: number        // wall clock of the latest scheduled event
+}
+const sessions = new Map<string, MockSession>()
+const SESSION_ID = TURNS[0].response.sessionId
 
-function parseTime(text: string, task: string | null | undefined): string | null {
-  const t = text.toLowerCase().replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/g, w => String(NUMBER_WORDS[w]))
-  const m = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|o'?clock)?(?=\W|$)/g)
-  if (!m) return null
-  for (const raw of m) {
-    const mm = raw.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/)
-    if (!mm) continue
-    const hour = Number(mm[1]); const min = mm[2] ?? '00'; const ap = mm[3]
-    if (hour < 1 || hour > 12) continue
-    const context = new RegExp('(at|make it|to|for|by|around|move it to|change it to|push it to)\\s+' + raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(t)
-    if (!ap && !context) continue
-    const morning = ap ? ap.startsWith('a') : task === 'Breakfast' || task === 'Coffee' ? hour >= 6 : false
-    return `${hour}:${min} ${morning ? 'AM' : 'PM'}`
-  }
-  return null
+function session(): MockSession {
+  let s = sessions.get(SESSION_ID)
+  if (!s) { s = { listeners: new Set(), timers: [], next: 0, pending: new Map(), cursor: 0, lastFireAt: 0 }; sessions.set(SESSION_ID, s) }
+  return s
 }
 
-function parseLocation(text: string): string | null {
-  const m = text.match(/\b(?:near|around|close to|in|by)\s+((?!the\b|a\b|an\b|me\b)[a-z][a-z'.-]*(?:\s+(?!and\b|at\b|for\b|with\b|tomorrow\b|tonight\b)[a-z][a-z'.-]*){0,2})/i)
-  if (!m) return null
-  const place = m[1].replace(/[.,!?]+$/, '').trim()
-  if (/^(the|a|an|me|my|here|there|italian|dinner)$/i.test(place)) return null
-  return title(place)
-}
+function emit(s: MockSession, e: AgentEvent) { for (const l of [...s.listeners]) l(e) }
 
-export function parseIntent(text: string, prev: Intent): Intent {
-  const lower = text.toLowerCase()
-  const next: Intent = { ...prev }
-  const taskWord = Object.keys(TASKS).find(k => new RegExp(`\\b${k}\\b`).test(lower))
-  if (taskWord) next.task = TASKS[taskWord]
-  const day = DAYS.find(d => new RegExp(`\\b${d}\\b`).test(lower))
-  if (day) next.date = day === 'tonight' ? 'Tonight' : title(day)
-  const time = parseTime(text, next.task)
-  if (time) next.time = time
-  const cuisine = CUISINES.find(c => new RegExp(`\\b${c}\\b`).test(lower))
-  if (cuisine) next.cuisine = cuisine === 'sushi' ? 'Japanese' : title(cuisine)
-  const loc = parseLocation(text)
-  if (loc) next.location = loc
-  for (const k of ['task', 'date', 'time', 'cuisine', 'location']) if (!(k in next)) next[k] = null
-  return next
-}
-
-const MOCK_PLACES = ['Osteria Lucia', 'Trattoria del Ponte', 'Vino & Farina', 'Casa Nonna', 'Forno Rosso']
-
-function search(intent: Intent): ToolResult {
-  const where = intent.location ?? 'near you'
-  const cuisine = intent.cuisine ?? 'Any cuisine'
-  const offset = intent.location ? 1 : 0
-  const items = MOCK_PLACES.slice(offset, offset + 3).map((name, i) => ({
-    title: name,
-    subtitle: `${cuisine} · ${intent.location ?? 'Nearby'}`,
-    meta: `Table for 2 · ${intent.time ?? 'any time'}${i === 0 ? ' · best match' : ''}`,
-  }))
-  return {
-    tool: 'restaurant_search',
-    status: 'ok',
-    summary: `3 ${cuisine.toLowerCase()} places ${intent.location ? 'near ' + where : where}${intent.time ? ' with a table at ' + intent.time : ''}`,
-    items,
-    draft: { title: `${intent.task ?? 'Plan'} at ${items[0].title}`, when: [intent.date, intent.time].filter(Boolean).join(' · ') || 'Time not set', where: intent.location ?? undefined, note: 'Draft, not sent' },
-    mock: true,
+/** Play recorded events while `until` holds; recorded time `base` maps to wall clock `startAt`. */
+function schedule(s: MockSession, until: (e: AgentEvent) => boolean, base: number, startAt = Date.now()) {
+  while (s.cursor < TIMELINE.length && until(TIMELINE[s.cursor])) {
+    const e = TIMELINE[s.cursor++]
+    const fireAt = startAt + Math.max(0, at(e) - base)
+    s.lastFireAt = Math.max(s.lastFireAt, fireAt)
+    s.timers.push(setTimeout(() => {
+      emit(s, e)
+      if (e.type === 'done') {
+        const idx = TURNS.findIndex(t => t.response.turnId === e.turnId)
+        s.pending.get(idx)?.(TURNS[idx].response); s.pending.delete(idx)
+      }
+    }, Math.max(0, fireAt - Date.now())))
   }
 }
 
-function reply(ops: PatchOp[], intent: Intent, first: boolean): string {
-  if (first) {
-    const parts = [intent.task, intent.date?.toLowerCase(), intent.time && 'at ' + intent.time].filter(Boolean).join(' ')
-    return `${parts.charAt(0).toUpperCase() + parts.slice(1)}${intent.cuisine ? ', ' + intent.cuisine : ''}. I found three places with a table${intent.time ? ' at ' + intent.time : ''}.`
-  }
-  const bits: string[] = []
-  for (const op of ops) {
-    if (op.status === 'changed' && op.field === 'time') bits.push(`Moved to ${op.to}`)
-    else if (op.status === 'changed') bits.push(`Switched to ${op.to}`)
-    else if (op.status === 'added' && op.field === 'location') bits.push(`narrowed to ${op.to}`)
-    else if (op.status === 'added') bits.push(`added ${op.to}`)
-  }
-  if (!bits.length) return 'Still on it. Nothing in the plan changed.'
-  const kept = ['task', 'date', 'cuisine'].filter(k => intent[k] && !ops.some(o => o.field === k)).map(k => (k === 'cuisine' ? String(intent[k]) : String(intent[k]).toLowerCase()))
-  const s = bits.join(', ')
-  const t = intent.time ? ' at ' + intent.time : ''
-  return `${s.charAt(0).toUpperCase() + s.slice(1)}. Kept ${kept.join(', ') || 'the rest'}. Three new options with a table${t}.`
+function offScript(s: MockSession, text: string, sessionId: string): Promise<TurnResponse> {
+  const turnId = 't_mock_' + Math.random().toString(36).slice(2, 8)
+  const state = TURNS[Math.max(0, s.next - 1)].response.state
+  const base = { sessionId, version: state.version, at: new Date().toISOString(), turnId }
+  const events: AgentEvent[] = [
+    { ...base, type: 'error', code: 'mock_off_script', message: MOCK_NOTE },
+    { ...base, type: 'done', superseded: false },
+  ]
+  return new Promise(resolve => setTimeout(() => {
+    events.forEach(e => emit(s, e))
+    resolve({ sessionId, turnId, state, patch: [], reply: null, toolResult: null, superseded: false, events, error: 'mock_off_script' })
+  }, 250))
+  void text
 }
 
-export async function mockTurn(req: TurnRequest, signal?: AbortSignal): Promise<TurnResponse> {
-  await new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, 520 + Math.random() * 260)
-    signal?.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')) }, { once: true })
-  })
-  const prev = sessions.get(req.sessionId) ?? { intent: {}, status: 'planning', version: 0, history: [] }
-  const first = !prev.version
-  const intent = parseIntent(req.text, prev.intent)
-  const ops: PatchOp[] = Object.keys(intent)
-    .map(field => {
-      const from = prev.intent[field] ?? null; const to = intent[field] ?? null
-      const status: PatchOp['status'] = from === to ? 'kept' : from === null ? 'added' : to === null ? 'removed' : 'changed'
-      return { field, from, to, status }
-    })
-    .filter(op => op.to !== null || op.from !== null)
-  const changed = ops.filter(op => op.status !== 'kept')
-  const understood = Boolean(intent.task || intent.cuisine || intent.time)
-  if (!understood) {
-    return { state: prev, patch: { ops: [] }, reply: 'I can plan a meal out. Try: schedule dinner tomorrow at 7 and find an Italian restaurant.', toolResult: null }
+export function mockTurn(req: TurnRequest, onEvent: Listener, signal?: AbortSignal): Promise<TurnResponse> {
+  const s = session()
+  s.listeners.add(onEvent)
+  const cleanup = () => s.listeners.delete(onEvent)
+  signal?.addEventListener('abort', cleanup, { once: true })
+  const idx = matchTurn(req.text)
+  let p: Promise<TurnResponse>
+  if (idx !== s.next) p = offScript(s, req.text, SESSION_ID)
+  else {
+    s.next++
+    p = new Promise<TurnResponse>(resolve => s.pending.set(idx, resolve))
+    if (idx === 0) {
+      // Turn 1 alone: its own events recorded before turn 2 arrived.
+      const t1 = TURNS[0].response.turnId
+      schedule(s, e => e.turnId === t1 && at(e) < T0 + TURNS[1].sentAtMs, T0)
+      s.timers.push(setTimeout(() => {
+        if (s.next !== 1) return
+        const a = TIMELINE.find(e => e.type === 'tool_call')!
+        const base = { sessionId: SESSION_ID, version: a.version, at: new Date().toISOString(), turnId: a.turnId }
+        const stop: AgentEvent[] = [
+          { ...base, type: 'error', code: 'mock_replay_limit', message: MOCK_NOTE, actionId: (a as { actionId: string }).actionId },
+          { ...base, type: 'done', superseded: false },
+        ]
+        stop.forEach(e => emit(s, e))
+        s.next = TURNS.length
+        s.pending.get(0)?.({ ...TURNS[0].response, reply: null, superseded: false, events: stop, error: 'mock_replay_limit' }); s.pending.delete(0)
+      }, MOCK_LIMIT_MS))
+    } else {
+      // Later turns: recorded send time maps to now. Like the real runtime (interpretation is
+      // serialized per session), nothing of this turn may precede the previous turn's queued events.
+      const first = TIMELINE[s.cursor]
+      if (first) schedule(s, () => true, at(first), Math.max(Date.now(), s.lastFireAt + 1))
+    }
   }
-  const version = (prev.version ?? 0) + 1
-  const state: AgentState = {
-    intent, status: 'acting', version,
-    history: [...(prev.history ?? []), ...changed.filter(op => op.from !== null).map(op => ({ turn: version, field: op.field, from: op.from, to: op.to }))],
-  }
-  sessions.set(req.sessionId, state)
-  return { state, patch: { ops }, reply: reply(changed, intent, first), toolResult: changed.length || first ? search(intent) : null }
+  return p.finally(cleanup)
 }
 
-export function resetMockSession(sessionId: string) { sessions.delete(sessionId) }
+export function resetMockSession() {
+  const s = sessions.get(SESSION_ID)
+  if (s) { s.timers.forEach(clearTimeout); s.listeners.clear(); s.pending.clear() }
+  sessions.delete(SESSION_ID)
+}

@@ -1,50 +1,83 @@
 /**
- * COMPASS turn contract (frozen, shared with BACKEND):
- *   POST /api/turn  { sessionId, text }  ->  { state, patch, reply, toolResult }
- * The local mock (mockBackend.ts) returns exactly this shape, so switching
- * mock -> real backend is a transport flag, not a UI change.
+ * COMPASS /api/turn contract v1 (COMPASS_MASTER §15, frozen 2026-09-18; backend implementation wins).
+ * Mirrors feat/agent-core server/state/intent.mjs + server/agent/runtime.mjs. No frontend-only schema.
+ *
+ *   POST /api/turn {sessionId?, text}
+ *     Accept: application/json  -> TurnResponse
+ *     Accept: text/event-stream -> one SSE event per AgentEvent, then `event: result` (TurnResponse without events)
  */
 
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'acting' | 'speaking' | 'interrupted' | 'replanning'
 
-/** Known intent slots. Backend may add more keys; the UI renders unknown keys generically. */
-export type IntentField = 'task' | 'date' | 'time' | 'cuisine' | 'location'
-export type Intent = Partial<Record<IntentField, string | null>> & Record<string, string | null | undefined>
+export type FieldName = 'task' | 'date' | 'time' | 'location' | 'cuisine' | 'party_size'
+export type FieldValue = string | number | null
+/** intent.time is 24h "HH:MM". Formatting happens only at render. */
+export type Intent = Record<FieldName, FieldValue>
 
-export type PatchStatus = 'added' | 'changed' | 'removed' | 'kept'
-/** One slot change. Shape agreed with VIDEO/BACKEND: { field, from, to, status }. */
-export interface PatchOp { field: string; from: string | null; to: string | null; status: PatchStatus }
-export interface TurnPatch { ops: PatchOp[] }
+export interface PatchOp {
+  field: FieldName
+  from: FieldValue
+  to: FieldValue
+  status: 'active' | 'kept'
+  change?: 'added' | 'updated' | 'removed'
+}
 
-export interface HistoryEntry { turn: number; field: string; from: string | null; to: string | null }
+export type StateStatus = 'idle' | 'thinking' | 'acting' | 'ready' | 'error'
+export type ActionStatus = 'pending' | 'running' | 'done' | 'invalidated' | 'failed'
+
+export interface RestaurantResult { name: string; area: string | null; availableAt: FieldValue; distanceKm: number }
+export interface SearchResult { mock?: boolean; query: Record<string, FieldValue>; results: RestaurantResult[] }
+
+export interface Action {
+  id: string
+  tool: string
+  args: Record<string, FieldValue>
+  dependsOn: string[]
+  status: ActionStatus
+  basedOnVersion: number
+  turnId?: string
+  result?: SearchResult
+  error?: string
+  invalidatedBy?: { version: number; fields: string[] }
+}
+
+export interface HistoryEntry { version: number; turnId: string; text: string; patch: PatchOp[] }
 
 export interface AgentState {
+  sessionId: string
+  version: number
+  status: StateStatus
   intent: Intent
-  status?: 'planning' | 'acting' | 'done' | 'needs_input'
-  version?: number
-  history?: HistoryEntry[]
+  actions: Action[]
+  history: HistoryEntry[]
+  updatedAt: string
 }
 
-export interface ToolItem { title: string; subtitle?: string; meta?: string }
-export interface ToolDraft { title: string; when: string; where?: string; note?: string }
-export interface ToolResult {
-  tool: string
-  status: 'ok' | 'error'
-  summary: string
-  items?: ToolItem[]
-  draft?: ToolDraft
-  mock?: boolean
-}
+export interface ToolResult { actionId: string; tool: string; mock: boolean; result: SearchResult }
 
-export interface TurnRequest { sessionId: string; text: string }
+interface EventBase { sessionId: string; version: number; at: string; turnId?: string }
+export type AgentEvent = EventBase & (
+  | { type: 'reasoning_status'; stage: 'interpreting' | 'waiting_for_fields' | 'reusing_action' | 'superseded' | string; text?: string; tool?: string; missing?: string[]; actionId?: string }
+  | { type: 'state_patch'; patch: PatchOp[]; changed: FieldName[]; rejected: unknown[]; intent: Intent; latencyMs?: number }
+  | { type: 'action_invalidated'; actionId: string; tool: string; previousStatus: ActionStatus; changedFields: FieldName[]; reason: string }
+  | { type: 'tool_call'; actionId: string; tool: string; args: Record<string, FieldValue>; mock?: boolean }
+  | { type: 'tool_result'; actionId: string; tool: string; result: SearchResult; mock?: boolean }
+  | { type: 'say'; text: string; final: boolean }
+  | { type: 'done'; superseded?: boolean }
+  | { type: 'error'; code: string; message: string; actionId?: string; tool?: string }
+)
+
+export interface TurnRequest { sessionId?: string; text: string }
 export interface TurnResponse {
+  sessionId: string
+  turnId: string
   state: AgentState
-  patch: TurnPatch | PatchOp[] | Record<string, unknown>
-  reply: string
+  patch: PatchOp[]
+  reply: string | null
   toolResult: ToolResult | null
+  superseded?: boolean
+  events?: AgentEvent[]
+  error?: string
 }
 
-export type FieldStatus = 'empty' | 'new' | 'kept' | 'changed' | 'added' | 'removed'
-export interface FieldView { key: string; label: string; value: string | null; previous: string | null; status: FieldStatus }
-
-export interface Turn { id: number; who: 'user' | 'compass'; text: string; interrupted?: boolean }
+export interface Turn { id: string; who: 'user' | 'compass'; text: string; interrupted?: boolean }

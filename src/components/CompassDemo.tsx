@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import Orb, { ORB_LABEL } from '../voice/Orb'
 import { isBusy, useCompassAgent } from '../voice/useCompassAgent'
-import type { FieldView } from '../voice/types'
+import type { ActionView, PlanView } from '../voice/useCompassAgent'
+import { FIELD_ORDER, formatValue, labelFor, time12, toolLabel } from '../voice/format'
+import type { FieldValue, PatchOp } from '../voice/types'
 import './compass-demo.css'
 
 const LINE_START = 'Schedule dinner tomorrow at 7 and find an Italian restaurant.'
@@ -21,18 +23,47 @@ function Speaker({ on }: { on: boolean }) {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 5 6 9H3v6l5 4V5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />{on ? <path d="M15 9a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /> : <path d="m16 9 5 6m0-6-5 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />}</svg>
 }
 
-const TAG: Partial<Record<FieldView['status'], string>> = { kept: 'kept', changed: 'updated', added: 'added', removed: 'cleared' }
+const TAG: Record<string, string> = { kept: 'kept', changed: 'updated', added: 'added', removed: 'removed' }
 
-function Slot({ f, revision }: { f: FieldView; revision: number }) {
+/** Render state straight from the v1 patch op: kept | active+updated | active+added | active+removed. */
+function slotStatus(op: PatchOp | undefined, value: FieldValue, revision: boolean): string {
+  if (op?.status === 'kept') return 'kept'
+  if (op?.status === 'active') return op.change === 'updated' ? 'changed' : op.change === 'removed' ? 'removed' : revision ? 'added' : 'new'
+  return value == null ? 'empty' : 'plain'
+}
+
+function Plan({ plan }: { plan: PlanView }) {
+  const fields = FIELD_ORDER.filter(f => plan.intent[f] != null || plan.patch.some(op => op.field === f) || f === 'location')
+  return <ul className="cv-slots">{fields.map(f => {
+    const op = plan.patch.find(o => o.field === f)
+    const status = slotStatus(op, plan.intent[f], plan.revision)
+    const previous = op && op.status === 'active' && (op.change === 'updated' || op.change === 'removed') ? formatValue(f, op.from) : null
+    return (
+      <li key={f} className={'cv-slot is-' + status}>
+        <span className="cv-slot-label">{labelFor(f)}</span>
+        <span className="cv-slot-values" key={f + '-' + plan.version}>
+          {previous && <span className="cv-old"><s>{previous}</s><em>superseded</em></span>}
+          <span className="cv-val">{formatValue(f, plan.intent[f]) ?? (f === 'location' ? 'Anywhere' : 'Not set')}</span>
+        </span>
+        {TAG[status] && <span className="cv-tag" key={'t' + plan.version}>{TAG[status]}</span>}
+      </li>
+    )
+  })}</ul>
+}
+
+function argsLine(args: Record<string, unknown>) {
+  return [args.cuisine, args.location ?? 'current area', args.date, time12((args.time as FieldValue) ?? null)].filter(Boolean).map(v => formatValue('x', v as FieldValue)).join(' · ')
+}
+
+function ActionRow({ a, current, holding }: { a: ActionView; current: boolean; holding: boolean }) {
+  const phase = a.status === 'running' && holding ? 'paused' : a.status
+  const status = phase === 'running' ? 'Searching' : phase === 'paused' ? 'Paused, listening' : phase === 'done' ? `${a.result?.results.length ?? 0} results` : phase === 'invalidated' ? `Invalidated by new ${(a.changedFields ?? []).map(labelFor).join(' + ').toLowerCase()}` : 'Stopped'
   return (
-    <li className={'cv-slot is-' + f.status}>
-      <span className="cv-slot-label">{f.label}</span>
-      <span className="cv-slot-values" key={f.key + '-' + revision}>
-        {f.previous && <span className="cv-old"><s>{f.previous}</s><em>superseded</em></span>}
-        <span className="cv-val">{f.value ?? (f.key === 'location' ? 'Anywhere' : 'Not set')}</span>
-      </span>
-      {TAG[f.status] && <span className="cv-tag" key={'t' + revision}>{TAG[f.status]}</span>}
-    </li>
+    <div className={'cv-act is-' + phase + (current ? ' is-current' : '')}>
+      <div className="cv-act-head"><span className="cv-act-args">{argsLine(a.args)}</span><span className="cv-act-status">{status}</span></div>
+      <div className="cv-progress"><span key={a.run} /></div>
+      {current && a.status === 'done' && a.result && <ul className="cv-results">{a.result.results.map((r, i) => <li key={a.id + i} style={{ animationDelay: i * 90 + 'ms' }}><b>{r.name}</b><span>{r.area ?? 'Nearby'} · {r.distanceKm.toFixed(1)} km</span><small>{time12(r.availableAt) ?? ''}</small></li>)}</ul>}
+    </div>
   )
 }
 
@@ -52,9 +83,7 @@ export default function CompassDemo() {
   }, [a.turns.length])
 
   useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape' && isBusy(a.orb)) { e.preventDefault(); void a.interrupt() }
-    }
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape' && isBusy(a.orb)) { e.preventDefault(); a.interrupt() } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [a])
@@ -69,13 +98,13 @@ export default function CompassDemo() {
   }
 
   const nextLine = a.hasPlan ? LINE_CHANGE : LINE_START
-  const toolName = a.tool.result?.tool === 'restaurant_search' ? 'Restaurant search' : a.tool.result?.tool?.replace(/_/g, ' ') ?? 'Action'
-  const toolStatus = a.tool.phase === 'running' ? 'Searching' : a.tool.phase === 'paused' ? 'Paused. Replanning with your change' : a.tool.phase === 'done' ? a.tool.result?.summary ?? 'Done' : 'Waiting for a plan'
+  const current = a.actions[a.actions.length - 1]
+  const changes = a.plan?.revision ? a.plan.patch.filter(op => op.status === 'active') : []
 
   return (
     <div className="compass-demo cv">
       <div className="cd-disclosure"><span className="cd-disclosure-dot" />
-        {a.servedBy === 'live' ? 'Live prototype · Connected to /api/turn · Browser voice' : 'Live prototype · Local mock backend (same /api/turn contract) · Results are mock data'}
+        {a.servedBy === 'live' ? 'Live · /api/turn (Nebius GLM-5.3) · Restaurant results are mock data · Browser voice' : 'Replay of a recorded live session (same /api/turn v1 events) · Restaurant results are mock data'}
       </div>
       <div className="cv-shell" data-state={a.orb}>
         <div className="cv-toolbar">
@@ -106,7 +135,7 @@ export default function CompassDemo() {
               <button type="button" className={'cv-mic' + (a.micOn ? ' is-on' : '')} onClick={a.toggleMic} disabled={!a.micSupported} aria-pressed={a.micOn} title={a.micSupported ? 'Hands-free: talk, and talk over COMPASS to interrupt' : 'Voice input not supported in this browser'}>
                 <Mic /><span>{a.micOn ? 'Listening' : 'Talk'}</span>
               </button>
-              {busy && <button type="button" className="cv-stop" onClick={() => void a.interrupt()} title="Interrupt (Esc)">Interrupt</button>}
+              {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title="Interrupt (Esc)">Interrupt</button>}
             </div>
 
             <div className="cv-script">
@@ -118,7 +147,7 @@ export default function CompassDemo() {
 
             <form className="cv-composer" onSubmit={send}>
               <label htmlFor="cv-input" className="cv-sr">Type to COMPASS</label>
-              <input id="cv-input" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? 'Type to interrupt…' : 'Or type it…'} maxLength={400} autoComplete="off" />
+              <input id="cv-input" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? 'Type to interrupt…' : 'Or type it…'} maxLength={500} autoComplete="off" />
               <button type="submit" disabled={!draft.trim()} aria-label="Send"><Arrow /></button>
             </form>
 
@@ -130,22 +159,19 @@ export default function CompassDemo() {
 
           <div className="cv-plan-col">
             <section className={'cv-plan' + (a.orb === 'replanning' ? ' is-replanning' : '')} aria-label="Current plan" aria-live="polite">
-              <header><span className="cv-eyebrow">The plan</span>{a.hasPlan && <span className={'cv-rev' + (a.replans ? ' is-revised' : '')} key={a.replans}>{a.replans ? 'Revised ×' + a.replans : 'Draft 1'}</span>}</header>
-              {a.fields.length ? <ul className="cv-slots">{a.fields.filter(f => f.value || f.previous || f.key === 'location').map(f => <Slot key={f.key} f={f} revision={a.revision} />)}</ul>
+              <header><span className="cv-eyebrow">The plan</span>{a.plan && <span className={'cv-rev' + (a.revisions ? ' is-revised' : '')} key={a.plan.version}>v{a.plan.version}{a.revisions ? ' · revised' : ''}</span>}</header>
+              {a.plan ? <Plan plan={a.plan} />
                 : <div className="cv-plan-empty"><span className="cv-ghost" /><span className="cv-ghost" /><span className="cv-ghost" /><p>Your plan appears here as COMPASS understands it.</p></div>}
             </section>
 
-            <section className={'cv-action is-' + a.tool.phase} aria-label="Action in progress">
-              <header><span className="cv-eyebrow">Action</span><span className="cv-tool-name">{toolName}{a.tool.result?.mock ? ' · mock' : ''}</span></header>
-              <div className="cv-progress"><span key={a.tool.run} /></div>
-              <p className="cv-tool-status">{toolStatus}</p>
-              {a.tool.phase === 'done' && a.tool.result?.items && <ul className="cv-results">{a.tool.result.items.map((it, i) => <li key={a.tool.run + '-' + i} style={{ animationDelay: i * 90 + 'ms' }}><b>{it.title}</b><span>{it.subtitle}</span><small>{it.meta}</small></li>)}</ul>}
-              {a.tool.phase === 'done' && a.tool.result?.draft && <div className="cv-draft" key={'d' + a.tool.run}><span className="cv-eyebrow">Calendar</span><b>{a.tool.result.draft.title}</b><span>{[a.tool.result.draft.when, a.tool.result.draft.where].filter(Boolean).join(' · ')}</span><small>{a.tool.result.draft.note}</small></div>}
+            <section className={'cv-action' + (current ? '' : ' is-idle')} aria-label="Action in progress">
+              <header><span className="cv-eyebrow">Action</span><span className="cv-tool-name">{current ? toolLabel(current.tool) + (current.mock ? ' · mock' : '') : 'Waiting for a plan'}</span></header>
+              {a.actions.slice(-2).map(x => <ActionRow key={x.id} a={x} current={x === current} holding={a.holding} />)}
             </section>
 
-            {a.changes.length > 0 && <section className="cv-changes" aria-label="What changed">
+            {changes.length > 0 && <section className="cv-changes" aria-label="What changed" key={a.plan!.version}>
               <span className="cv-eyebrow">What changed</span>
-              <ul>{a.changes.map(c => <li key={c.id}><span>{c.field}</span>{c.from && <s>{c.from}</s>}{c.from && <i aria-hidden="true">→</i>}<b>{c.to ?? 'cleared'}</b></li>)}</ul>
+              <ul>{changes.map(op => <li key={op.field}><span>{labelFor(op.field)}</span>{op.from != null && <s>{formatValue(op.field, op.from)}</s>}{op.from != null && <i aria-hidden="true">→</i>}<b>{formatValue(op.field, op.to) ?? 'removed'}</b></li>)}</ul>
             </section>}
           </div>
         </div>
