@@ -108,3 +108,22 @@ test('tool that needs a missing field waits instead of running', async () => {
   assert.equal(r.reply, 'What cuisine?');
   assert.ok(r.events.some((e) => e.stage === 'waiting_for_fields'));
 });
+
+import { validateInterpretation, createGlmInterpreter } from '../server/agent/interpreter.mjs';
+
+test('interpreter accepts flat model output and drops unknown keys', () => {
+  const v = validateInterpretation({ task: 'schedule dinner', time: '19:00', mood: 'x' });
+  assert.deepEqual(v.set, { task: 'schedule dinner', time: '19:00' });
+  const w = validateInterpretation({ set: { time: '20:00' }, unset: ['bogus', 'location'], tool: 'mock_restaurant_search', reply: 'ok' });
+  assert.deepEqual(w, { set: { time: '20:00' }, unset: ['location'], tool: 'mock_restaurant_search', reply: 'ok' });
+});
+
+test('interpreter retries once on a transient timeout', async () => {
+  let n = 0;
+  const llm = { chat: async () => { n++; if (n === 1) { const e = new Error('t'); e.code = 'timeout'; throw e; } return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"time":"20:00"},"unset":[],"tool":"None","reply":"ok"}' } }] }, latencyMs: 5 }; } };
+  const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'x', tools: [] });
+  assert.equal(n, 2);
+  assert.equal(out.retried, 1);
+  assert.equal(out.set.time, '20:00');
+  assert.equal(out.tool, null, '"None" string treated as no tool');
+});
