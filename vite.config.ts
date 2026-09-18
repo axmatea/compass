@@ -3,7 +3,21 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {
+    name: "compass-demo-route",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = "/demo.html";
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = "/demo.html";
+        next();
+      });
+    },
+  }],
   build: {
     outDir: "dist",
     rollupOptions: {
