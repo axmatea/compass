@@ -1,0 +1,683 @@
+{
+  "contract": "COMPASS /api/turn v1",
+  "recordedAt": "2026-09-18T18:49:01.033Z",
+  "source": {
+    "model": "zai-org/GLM-5.3",
+    "tool": "mock_restaurant_search (MOCK data)",
+    "mockToolDelayMs": 2500
+  },
+  "note": "Real GLM-5.3 interpretation. Restaurant results are mock placeholders, not real venues.",
+  "turns": [
+    {
+      "request": {
+        "sessionId": "s_f26c3c31",
+        "text": "Schedule dinner tomorrow at 7 and find an Italian restaurant."
+      },
+      "sentAtMs": 0,
+      "response": {
+        "sessionId": "s_f26c3c31",
+        "turnId": "t_66e7e8d7",
+        "state": {
+          "sessionId": "s_f26c3c31",
+          "version": 2,
+          "status": "acting",
+          "intent": {
+            "task": "schedule dinner",
+            "date": "tomorrow",
+            "time": "20:00",
+            "location": "Palo Alto",
+            "cuisine": "Italian",
+            "party_size": null
+          },
+          "actions": [
+            {
+              "id": "a_eedb4f11",
+              "tool": "mock_restaurant_search",
+              "args": {
+                "cuisine": "Italian",
+                "location": null,
+                "date": "tomorrow",
+                "time": "19:00"
+              },
+              "dependsOn": [
+                "cuisine",
+                "location",
+                "date",
+                "time"
+              ],
+              "status": "invalidated",
+              "basedOnVersion": 1,
+              "turnId": "t_66e7e8d7",
+              "invalidatedBy": {
+                "version": 2,
+                "fields": [
+                  "location",
+                  "time"
+                ]
+              }
+            },
+            {
+              "id": "a_63fda5eb",
+              "tool": "mock_restaurant_search",
+              "args": {
+                "cuisine": "Italian",
+                "location": "Palo Alto",
+                "date": "tomorrow",
+                "time": "20:00"
+              },
+              "dependsOn": [
+                "cuisine",
+                "location",
+                "date",
+                "time"
+              ],
+              "status": "running",
+              "basedOnVersion": 2,
+              "turnId": "t_c2da9ffc"
+            }
+          ],
+          "history": [
+            {
+              "version": 1,
+              "turnId": "t_66e7e8d7",
+              "text": "Schedule dinner tomorrow at 7 and find an Italian restaurant.",
+              "patch": [
+                {
+                  "field": "task",
+                  "from": null,
+                  "to": "schedule dinner",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "date",
+                  "from": null,
+                  "to": "tomorrow",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "time",
+                  "from": null,
+                  "to": "19:00",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "cuisine",
+                  "from": null,
+                  "to": "Italian",
+                  "status": "active",
+                  "change": "added"
+                }
+              ]
+            },
+            {
+              "version": 2,
+              "turnId": "t_c2da9ffc",
+              "text": "Actually make it 8. Somewhere near Palo Alto.",
+              "patch": [
+                {
+                  "field": "time",
+                  "from": "19:00",
+                  "to": "20:00",
+                  "status": "active",
+                  "change": "updated"
+                },
+                {
+                  "field": "location",
+                  "from": null,
+                  "to": "Palo Alto",
+                  "status": "active",
+                  "change": "added"
+                }
+              ]
+            }
+          ],
+          "updatedAt": "2026-09-18T18:48:58.531Z"
+        },
+        "patch": [
+          {
+            "field": "task",
+            "from": null,
+            "to": "schedule dinner",
+            "status": "active",
+            "change": "added"
+          },
+          {
+            "field": "date",
+            "from": null,
+            "to": "tomorrow",
+            "status": "active",
+            "change": "added"
+          },
+          {
+            "field": "time",
+            "from": null,
+            "to": "19:00",
+            "status": "active",
+            "change": "added"
+          },
+          {
+            "field": "cuisine",
+            "from": null,
+            "to": "Italian",
+            "status": "active",
+            "change": "added"
+          }
+        ],
+        "reply": null,
+        "toolResult": null,
+        "superseded": true
+      }
+    },
+    {
+      "request": {
+        "sessionId": "s_f26c3c31",
+        "text": "Actually make it 8. Somewhere near Palo Alto."
+      },
+      "sentAtMs": 4998,
+      "response": {
+        "sessionId": "s_f26c3c31",
+        "turnId": "t_c2da9ffc",
+        "state": {
+          "sessionId": "s_f26c3c31",
+          "version": 2,
+          "status": "ready",
+          "intent": {
+            "task": "schedule dinner",
+            "date": "tomorrow",
+            "time": "20:00",
+            "location": "Palo Alto",
+            "cuisine": "Italian",
+            "party_size": null
+          },
+          "actions": [
+            {
+              "id": "a_eedb4f11",
+              "tool": "mock_restaurant_search",
+              "args": {
+                "cuisine": "Italian",
+                "location": null,
+                "date": "tomorrow",
+                "time": "19:00"
+              },
+              "dependsOn": [
+                "cuisine",
+                "location",
+                "date",
+                "time"
+              ],
+              "status": "invalidated",
+              "basedOnVersion": 1,
+              "turnId": "t_66e7e8d7",
+              "invalidatedBy": {
+                "version": 2,
+                "fields": [
+                  "location",
+                  "time"
+                ]
+              }
+            },
+            {
+              "id": "a_63fda5eb",
+              "tool": "mock_restaurant_search",
+              "args": {
+                "cuisine": "Italian",
+                "location": "Palo Alto",
+                "date": "tomorrow",
+                "time": "20:00"
+              },
+              "dependsOn": [
+                "cuisine",
+                "location",
+                "date",
+                "time"
+              ],
+              "status": "done",
+              "basedOnVersion": 2,
+              "turnId": "t_c2da9ffc",
+              "result": {
+                "mock": true,
+                "query": {
+                  "cuisine": "Italian",
+                  "location": "Palo Alto",
+                  "date": "tomorrow",
+                  "time": "20:00"
+                },
+                "results": [
+                  {
+                    "name": "Italian Trattoria Uno (mock)",
+                    "area": "Palo Alto",
+                    "availableAt": "20:00",
+                    "distanceKm": 0.6
+                  },
+                  {
+                    "name": "Italian Osteria Due (mock)",
+                    "area": "Palo Alto",
+                    "availableAt": "20:00",
+                    "distanceKm": 1.2999999999999998
+                  },
+                  {
+                    "name": "Italian Cucina Tre (mock)",
+                    "area": "Palo Alto",
+                    "availableAt": "20:00",
+                    "distanceKm": 2
+                  }
+                ]
+              }
+            }
+          ],
+          "history": [
+            {
+              "version": 1,
+              "turnId": "t_66e7e8d7",
+              "text": "Schedule dinner tomorrow at 7 and find an Italian restaurant.",
+              "patch": [
+                {
+                  "field": "task",
+                  "from": null,
+                  "to": "schedule dinner",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "date",
+                  "from": null,
+                  "to": "tomorrow",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "time",
+                  "from": null,
+                  "to": "19:00",
+                  "status": "active",
+                  "change": "added"
+                },
+                {
+                  "field": "cuisine",
+                  "from": null,
+                  "to": "Italian",
+                  "status": "active",
+                  "change": "added"
+                }
+              ]
+            },
+            {
+              "version": 2,
+              "turnId": "t_c2da9ffc",
+              "text": "Actually make it 8. Somewhere near Palo Alto.",
+              "patch": [
+                {
+                  "field": "time",
+                  "from": "19:00",
+                  "to": "20:00",
+                  "status": "active",
+                  "change": "updated"
+                },
+                {
+                  "field": "location",
+                  "from": null,
+                  "to": "Palo Alto",
+                  "status": "active",
+                  "change": "added"
+                }
+              ]
+            }
+          ],
+          "updatedAt": "2026-09-18T18:48:58.531Z"
+        },
+        "patch": [
+          {
+            "field": "task",
+            "from": "schedule dinner",
+            "to": "schedule dinner",
+            "status": "kept"
+          },
+          {
+            "field": "date",
+            "from": "tomorrow",
+            "to": "tomorrow",
+            "status": "kept"
+          },
+          {
+            "field": "time",
+            "from": "19:00",
+            "to": "20:00",
+            "status": "active",
+            "change": "updated"
+          },
+          {
+            "field": "location",
+            "from": null,
+            "to": "Palo Alto",
+            "status": "active",
+            "change": "added"
+          },
+          {
+            "field": "cuisine",
+            "from": "Italian",
+            "to": "Italian",
+            "status": "kept"
+          }
+        ],
+        "reply": "Moved to 8 PM. Three Italian spots near Palo Alto for 8 PM. Sample results.",
+        "toolResult": {
+          "actionId": "a_63fda5eb",
+          "tool": "mock_restaurant_search",
+          "mock": true,
+          "result": {
+            "mock": true,
+            "query": {
+              "cuisine": "Italian",
+              "location": "Palo Alto",
+              "date": "tomorrow",
+              "time": "20:00"
+            },
+            "results": [
+              {
+                "name": "Italian Trattoria Uno (mock)",
+                "area": "Palo Alto",
+                "availableAt": "20:00",
+                "distanceKm": 0.6
+              },
+              {
+                "name": "Italian Osteria Due (mock)",
+                "area": "Palo Alto",
+                "availableAt": "20:00",
+                "distanceKm": 1.2999999999999998
+              },
+              {
+                "name": "Italian Cucina Tre (mock)",
+                "area": "Palo Alto",
+                "availableAt": "20:00",
+                "distanceKm": 2
+              }
+            ]
+          }
+        },
+        "superseded": false
+      }
+    }
+  ],
+  "sessionEvents": [
+    {
+      "type": "reasoning_status",
+      "sessionId": "s_f26c3c31",
+      "version": 0,
+      "at": "2026-09-18T18:48:53.182Z",
+      "turnId": "t_66e7e8d7",
+      "stage": "interpreting",
+      "text": "Schedule dinner tomorrow at 7 and find an Italian restaurant.",
+      "tMs": 0
+    },
+    {
+      "type": "state_patch",
+      "sessionId": "s_f26c3c31",
+      "version": 1,
+      "at": "2026-09-18T18:48:57.262Z",
+      "turnId": "t_66e7e8d7",
+      "patch": [
+        {
+          "field": "task",
+          "from": null,
+          "to": "schedule dinner",
+          "status": "active",
+          "change": "added"
+        },
+        {
+          "field": "date",
+          "from": null,
+          "to": "tomorrow",
+          "status": "active",
+          "change": "added"
+        },
+        {
+          "field": "time",
+          "from": null,
+          "to": "19:00",
+          "status": "active",
+          "change": "added"
+        },
+        {
+          "field": "cuisine",
+          "from": null,
+          "to": "Italian",
+          "status": "active",
+          "change": "added"
+        }
+      ],
+      "changed": [
+        "task",
+        "date",
+        "time",
+        "cuisine"
+      ],
+      "rejected": [],
+      "intent": {
+        "task": "schedule dinner",
+        "date": "tomorrow",
+        "time": "19:00",
+        "location": null,
+        "cuisine": "Italian",
+        "party_size": null
+      },
+      "latencyMs": 4078,
+      "tMs": 4080
+    },
+    {
+      "type": "tool_call",
+      "sessionId": "s_f26c3c31",
+      "version": 1,
+      "at": "2026-09-18T18:48:57.263Z",
+      "turnId": "t_66e7e8d7",
+      "actionId": "a_eedb4f11",
+      "tool": "mock_restaurant_search",
+      "args": {
+        "cuisine": "Italian",
+        "location": null,
+        "date": "tomorrow",
+        "time": "19:00"
+      },
+      "mock": true,
+      "tMs": 4081
+    },
+    {
+      "type": "say",
+      "sessionId": "s_f26c3c31",
+      "version": 1,
+      "at": "2026-09-18T18:48:57.263Z",
+      "turnId": "t_66e7e8d7",
+      "text": "Dinner tomorrow at 7, Italian. Searching restaurants now.",
+      "final": false,
+      "tMs": 4081
+    },
+    {
+      "type": "reasoning_status",
+      "sessionId": "s_f26c3c31",
+      "version": 1,
+      "at": "2026-09-18T18:48:58.180Z",
+      "turnId": "t_c2da9ffc",
+      "stage": "interpreting",
+      "text": "Actually make it 8. Somewhere near Palo Alto.",
+      "tMs": 4998
+    },
+    {
+      "type": "state_patch",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_c2da9ffc",
+      "patch": [
+        {
+          "field": "task",
+          "from": "schedule dinner",
+          "to": "schedule dinner",
+          "status": "kept"
+        },
+        {
+          "field": "date",
+          "from": "tomorrow",
+          "to": "tomorrow",
+          "status": "kept"
+        },
+        {
+          "field": "time",
+          "from": "19:00",
+          "to": "20:00",
+          "status": "active",
+          "change": "updated"
+        },
+        {
+          "field": "location",
+          "from": null,
+          "to": "Palo Alto",
+          "status": "active",
+          "change": "added"
+        },
+        {
+          "field": "cuisine",
+          "from": "Italian",
+          "to": "Italian",
+          "status": "kept"
+        }
+      ],
+      "changed": [
+        "time",
+        "location"
+      ],
+      "rejected": [],
+      "intent": {
+        "task": "schedule dinner",
+        "date": "tomorrow",
+        "time": "20:00",
+        "location": "Palo Alto",
+        "cuisine": "Italian",
+        "party_size": null
+      },
+      "latencyMs": 349,
+      "tMs": 5348
+    },
+    {
+      "type": "action_invalidated",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_c2da9ffc",
+      "actionId": "a_eedb4f11",
+      "tool": "mock_restaurant_search",
+      "previousStatus": "running",
+      "changedFields": [
+        "location",
+        "time"
+      ],
+      "reason": "intent_changed",
+      "tMs": 5349
+    },
+    {
+      "type": "tool_call",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_c2da9ffc",
+      "actionId": "a_63fda5eb",
+      "tool": "mock_restaurant_search",
+      "args": {
+        "cuisine": "Italian",
+        "location": "Palo Alto",
+        "date": "tomorrow",
+        "time": "20:00"
+      },
+      "mock": true,
+      "tMs": 5349
+    },
+    {
+      "type": "say",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_c2da9ffc",
+      "text": "Updated to 8 PM near Palo Alto.",
+      "final": false,
+      "tMs": 5349
+    },
+    {
+      "type": "reasoning_status",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_66e7e8d7",
+      "stage": "superseded",
+      "tMs": 5349
+    },
+    {
+      "type": "done",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:48:58.531Z",
+      "turnId": "t_66e7e8d7",
+      "superseded": true,
+      "tMs": 5349
+    },
+    {
+      "type": "tool_result",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:49:01.033Z",
+      "turnId": "t_c2da9ffc",
+      "actionId": "a_63fda5eb",
+      "tool": "mock_restaurant_search",
+      "result": {
+        "mock": true,
+        "query": {
+          "cuisine": "Italian",
+          "location": "Palo Alto",
+          "date": "tomorrow",
+          "time": "20:00"
+        },
+        "results": [
+          {
+            "name": "Italian Trattoria Uno (mock)",
+            "area": "Palo Alto",
+            "availableAt": "20:00",
+            "distanceKm": 0.6
+          },
+          {
+            "name": "Italian Osteria Due (mock)",
+            "area": "Palo Alto",
+            "availableAt": "20:00",
+            "distanceKm": 1.2999999999999998
+          },
+          {
+            "name": "Italian Cucina Tre (mock)",
+            "area": "Palo Alto",
+            "availableAt": "20:00",
+            "distanceKm": 2
+          }
+        ]
+      },
+      "mock": true,
+      "tMs": 7851
+    },
+    {
+      "type": "say",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:49:01.033Z",
+      "turnId": "t_c2da9ffc",
+      "text": "Moved to 8 PM. Three Italian spots near Palo Alto for 8 PM. Sample results.",
+      "final": true,
+      "tMs": 7851
+    },
+    {
+      "type": "done",
+      "sessionId": "s_f26c3c31",
+      "version": 2,
+      "at": "2026-09-18T18:49:01.033Z",
+      "turnId": "t_c2da9ffc",
+      "superseded": false,
+      "tMs": 7851
+    }
+  ]
+}
