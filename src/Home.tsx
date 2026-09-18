@@ -11,7 +11,7 @@ export default function Home(){
  const [presenting,setPresenting]=useState(false);
  const [playing,setPlaying]=useState(false);
  function watch(){document.getElementById("film")?.scrollIntoView({behavior:"smooth"});void film.current?.play().catch(()=>{});}
- function openPresentation(){setPresenting(true);}
+ function openPresentation(){film.current?.pause();setPresenting(true);}
  useEffect(()=>{if(window.location.hash==="#present")setPresenting(true);},[]);
  return <div className="compass-site">
   <a className="skip-link" href="#main">Skip to content</a>

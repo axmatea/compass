@@ -23,3 +23,5 @@ No automatic two-way sync exists. Future changes ship from axmatea/compass main 
 - Browser comparison: opening presentation matches original at1280×720; mobile correction slide reviewed at390×844.
 - Autoplay advances slide1→2, pause works, slide selector opens correction scene.
 - Guided demo correction preserves partnership and updates goal from leaving to redistributing work.
+
+- Migration fix: opening the presentation pauses the film, so its soundtrack cannot overlap browser narration.
