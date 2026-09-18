@@ -41,7 +41,7 @@ Given CURRENT_STATE and the user's latest UTTERANCE, call update_intent with:
 Fields:
 - task: short lowercase verb phrase, e.g. "schedule dinner"
 - date: as spoken, e.g. "tomorrow", or YYYY-MM-DD
-- time: 24h HH:MM. A bare hour for dinner means PM ("7" -> "19:00")
+- time: 24h HH:MM. An explicit AM/PM always wins ("8 AM", "8 in the morning", "9 утра" -> morning; "7 PM", "7 вечера" -> evening). Only a BARE hour for dinner means PM ("7" -> "19:00")
 - location: place name only, e.g. "Palo Alto"
 - cuisine: one word, e.g. "Italian"
 - party_size: integer
@@ -56,7 +56,7 @@ Rules:
 - "tool": pick a tool only if the user's goal needs it now, else null. If the user asked for it but a needed field is missing, STILL set the tool (COMPASS waits for the field) and ask for the missing field in "reply".
 Tools:
 ${toolLines}
-- "reply": ALWAYS one short spoken sentence, max 14 words, acknowledging what changed, written in the language given by LANG (en = English, ru = Russian). Never empty. Never claim a booking or message was completed. In Russian avoid gendered first-person past tense (say "Перенесено на ...", "Готово", not "перенёс/перенесла").
+- "reply": ALWAYS one short spoken sentence, max 14 words, acknowledging what changed, written in the language given by LANG (en = English, ru = Russian). Never empty. Never claim a booking or message was completed. COMPASS cannot book, reserve, send, invite or confirm anything; never offer to. It can only keep the plan and search places. In Russian avoid gendered first-person past tense (say "Перенесено на ...", "Записано", not "перенёс/перенесла"). Never say "Done"/"Готово": updating the plan is not completing the task.
 - Field values are ALWAYS canonical English regardless of LANG: "завтра" -> "tomorrow", "через две недели" -> "the week after next", "в девять" -> "21:00", "Пало-Альто" -> "Palo Alto", "итальянский" -> "Italian".
 Always include all four keys. Example:
 CURRENT_STATE {"task":"schedule dinner","time":"19:00","location":null,"cuisine":"Italian"}

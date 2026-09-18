@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { createState, applyUpdate, addAction, updateAction, invalidateActions, findReusableAction } from '../state/intent.mjs';
 import { missingFields } from '../tools/registry.mjs';
 import { detectLang, matchesLang, describeChanges, t as tr } from '../i18n/lang.mjs';
+import { correctMeridiem, keepHalfOfDay } from './meridiem.mjs';
 
 export { describeChanges };
 const shortId = (p) => `${p}_${randomUUID().slice(0, 8)}`;
@@ -116,6 +117,13 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
           return { sessionId: session.id, turnId, state: session.state, patch: [], reply: tr(lang).fallback, toolResult: null, error: err.code || 'interpret_failed', events };
         }
 
+        // Explicit "8 in the morning" / "в 9 вечера" overrides the model's dinner-means-PM default.
+        const fixedTime = correctMeridiem(text, interp.set?.time) || keepHalfOfDay(text, interp.set?.time, session.state.intent.time);
+        if (fixedTime) {
+          emit(session, 'reasoning_status', { turnId, stage: 'meridiem_corrected', from: interp.set.time, to: fixedTime });
+          interp = { ...interp, set: { ...interp.set, time: fixedTime }, reply: null };
+        }
+
         const upd = applyUpdate(session.state, interp, { turnId, text });
         setState(session, upd.state);
         patch = upd.patch;
@@ -154,7 +162,7 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         }
 
         refreshStatus(session);
-        ack = interp.reply;
+        ack = interp.reply || describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
         // GLM sometimes answers in the wrong language; the spoken reply must follow the user.
         if (ack && !matchesLang(ack, lang)) ack = describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
         if (!planned.length && waiting.has('location') && !/[?？]\s*$/.test(ack || '')) ack = [ack, tr(lang).askLocation].filter(Boolean).join(' ');

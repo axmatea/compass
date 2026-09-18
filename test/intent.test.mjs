@@ -10,6 +10,9 @@ test('normalizeTime handles spoken and model formats', () => {
   assert.equal(normalizeTime('20:00'), '20:00');
   assert.equal(normalizeTime('7', { task: 'coffee' }), '07:00');
   assert.equal(normalizeTime('12 am'), '00:00');
+  // explicit zero-padded 24h is never shifted to PM ("8 in the morning" for a dinner)
+  assert.equal(normalizeTime('08:00', { task: 'schedule dinner' }), '08:00');
+  assert.equal(normalizeTime('7:30', { task: 'schedule dinner' }), '19:30');
   assert.equal(normalizeTime('soonish'), null);
   assert.equal(normalizeTime('25:00'), null);
 });
