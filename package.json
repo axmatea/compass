@@ -11,7 +11,10 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "test": "node --test test/",
+    "test:live": "node --env-file=.env --test test/live/",
+    "probe:nebius": "node --env-file=.env scripts/nebius-probe.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
