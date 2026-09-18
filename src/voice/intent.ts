@@ -1,7 +1,7 @@
 import type { AgentState, FieldView, Intent, PatchOp, TurnResponse } from './types'
 
 export const FIELD_ORDER = ['task', 'date', 'time', 'cuisine', 'location']
-const LABELS: Record<string, string> = { task: 'Plan', date: 'Day', time: 'Time', cuisine: 'Cuisine', location: 'Where' }
+const LABELS: Record<string, string> = { task: 'Plan', date: 'When', time: 'Time', cuisine: 'Cuisine', location: 'Near' }
 
 export const labelFor = (key: string) => LABELS[key] ?? key.replace(/[_-]+/g, ' ').replace(/^\w/, c => c.toUpperCase())
 
