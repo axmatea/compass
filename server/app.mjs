@@ -7,8 +7,9 @@ import { createToolRegistry } from './tools/registry.mjs';
 import { createMockRestaurantSearch } from './tools/mock-restaurant-search.mjs';
 import { createVoiceRegistry } from './voice/provider.mjs';
 import { createApiHandler } from './api.mjs';
+import { attachVoiceServer } from './voice/ws-server.mjs';
 
-export function createCompassBackend({ env = process.env, interpreter, tools, logger = console } = {}) {
+export function createCompassBackend({ env = process.env, interpreter, tools, connectUpstream, logger = console } = {}) {
   const config = loadConfig(env);
   const toolRegistry = tools || createToolRegistry([createMockRestaurantSearch({ delayMs: Number(env.MOCK_TOOL_DELAY_MS ?? 1500) })]);
   const interp = interpreter || (config.nebius.apiKey
@@ -17,5 +18,12 @@ export function createCompassBackend({ env = process.env, interpreter, tools, lo
   const runtime = createAgentRuntime({ interpreter: interp, tools: toolRegistry });
   const voice = createVoiceRegistry(config);
   const health = () => ({ ...describeConfig(config), tools: toolRegistry.list().map((t) => ({ name: t.name, mock: t.mock })) });
-  return { runtime, voice, handleApi: createApiHandler({ runtime, health, voice, logger }), config: describeConfig(config) };
+  return {
+    runtime,
+    voice,
+    handleApi: createApiHandler({ runtime, health, voice, logger }),
+    /** Mount the realtime voice WebSocket on an http.Server (upgrade on /api/voice/realtime). */
+    attachVoice: (httpServer) => attachVoiceServer(httpServer, { runtime, config, connectUpstream, logger }),
+    config: describeConfig(config),
+  };
 }

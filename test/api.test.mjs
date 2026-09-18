@@ -32,14 +32,17 @@ test('health exposes presence flags only, never secrets', async () => {
   const j = JSON.parse(text);
   assert.equal(j.nebius.configured, true);
   assert.equal(j.boson.configured, true);
-  assert.equal(j.voiceProvider, 'browser');
+  assert.equal(j.voiceProvider, 'auto');
 });
 
-test('voice providers: boson reported unverified, browser active', async () => {
+test('voice providers: boson active when key configured, browser is fallback', async () => {
   const j = await (await fetch(`${base}/api/voice/providers`)).json();
-  assert.equal(j.active, 'browser');
+  assert.equal(j.active, 'boson');
+  assert.equal(j.fallback, 'browser');
   const boson = j.providers.find((p) => p.name === 'boson');
-  assert.equal(boson.verifiedContract, false);
+  assert.equal(boson.verifiedContract, true);
+  assert.equal(boson.liveVerified, false);
+  assert.ok(!JSON.stringify(j).includes('SECRET'));
   assert.equal((await post('/api/voice/tts', { text: 'hi' })).status, 501);
 });
 

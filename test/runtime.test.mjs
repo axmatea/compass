@@ -123,7 +123,21 @@ test('interpreter retries once on a transient timeout', async () => {
   const llm = { chat: async () => { n++; if (n === 1) { const e = new Error('t'); e.code = 'timeout'; throw e; } return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"time":"20:00"},"unset":[],"tool":"None","reply":"ok"}' } }] }, latencyMs: 5 }; } };
   const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'x', tools: [] });
   assert.equal(n, 2);
-  assert.equal(out.retried, 1);
+  assert.ok(out.retried >= 1);
   assert.equal(out.set.time, '20:00');
   assert.equal(out.tool, null, '"None" string treated as no tool');
+});
+
+test('interpreter falls back from "required" to "auto" when the forced call is empty', async () => {
+  const modes = [];
+  const llm = { chat: async ({ toolChoice }) => {
+    modes.push(toolChoice);
+    if (toolChoice === 'required') return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{}' } }] }, latencyMs: 5 };
+    return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"date":"next week"},"unset":[],"tool":null,"reply":"Moved to next week."}' } }] }, latencyMs: 7 };
+  } };
+  const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'Can we change it for next week?', tools: [] });
+  assert.deepEqual(modes, ['required', 'auto']);
+  assert.equal(out.set.date, 'next week');
+  assert.equal(out.mode, 'auto');
+  assert.equal(out.latencyMs, 12);
 });

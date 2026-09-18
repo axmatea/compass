@@ -24,32 +24,29 @@ export function createBrowserVoiceProvider() {
 }
 
 /**
- * Boson / Higgs placeholder. Intentionally NOT implemented: the official realtime
- * API contract has not been verified yet (COMPASS_MASTER risk #1). Do not add
- * endpoints, message formats or model names here until they are confirmed from
- * current official Boson documentation.
+ * Boson Higgs Realtime (contract verified from official docs 2026-09-18, COMPASS_MASTER §18).
+ * Runs server-side as a relay (server/voice/realtime-bridge.mjs); the browser never sees the key.
+ * liveVerified stays false until scripts/boson-smoke.mjs passes with a real BOSON_API_KEY.
  */
-export function createBosonVoiceProvider({ apiKey }) {
-  const notReady = () => { throw Object.assign(new Error('Boson provider not implemented: contract unverified'), { code: 'not_implemented' }); };
+export function createBosonVoiceProvider({ apiKey, voice = 'default', turnDetection = 'semantic_vad' }) {
   return {
     name: 'boson',
     where: 'server',
-    capabilities: { stt: null, tts: null, realtime: null, bargeIn: null, streamingTts: null, languages: [] },
-    status: () => ({ configured: Boolean(apiKey), verifiedContract: false, note: 'Awaiting verified Higgs realtime API contract.' }),
-    synthesize: notReady,
-    transcribe: notReady,
-    openRealtime: notReady,
+    endpoint: '/api/voice/realtime',
+    capabilities: { stt: true, tts: true, realtime: true, bargeIn: true, streamingTts: true, languages: ['100+ (auto-detected)'] },
+    status: () => ({ configured: Boolean(apiKey), verifiedContract: true, liveVerified: false, voice, turnDetection, note: 'WebSocket relay to wss://api.boson.ai/v1/realtime (higgs-realtime); reasoning stays on Nebius via compass_turn.' }),
   };
 }
 
 export function createVoiceRegistry(config) {
   const providers = [createBrowserVoiceProvider(), createBosonVoiceProvider(config.boson)];
   const byName = new Map(providers.map((p) => [p.name, p]));
-  const requested = byName.get(config.voiceProvider);
-  // Fall back to browser unless the requested provider is configured AND verified.
-  const active = requested && requested.status().configured && requested.status().verifiedContract ? requested : byName.get('browser');
+  // Priority: Boson realtime -> browser speech fallback.
+  const boson = byName.get('boson');
+  const active = config.voiceProvider !== 'browser' && boson.status().configured ? boson : byName.get('browser');
   return {
     activeName: active.name,
+    fallback: 'browser',
     active,
     get: (n) => byName.get(n) || null,
     list: () => providers.map((p) => ({ name: p.name, where: p.where, capabilities: p.capabilities, ...p.status() })),

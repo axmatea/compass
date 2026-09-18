@@ -65,7 +65,7 @@ export function createApiHandler({ runtime, health, voice, turnsPerMinute = 30, 
     try {
       if (path === '/api/health' && method === 'GET') return send(res, 200, { ok: true, ...health() });
 
-      if (path === '/api/voice/providers' && method === 'GET') return send(res, 200, { providers: voice.list(), active: voice.activeName });
+      if (path === '/api/voice/providers' && method === 'GET') return send(res, 200, { providers: voice.list(), active: voice.activeName, fallback: voice.fallback });
 
       if (path === '/api/session' && method === 'POST') {
         const s = runtime.createSession();

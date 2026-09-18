@@ -49,11 +49,13 @@ Rules:
 - The utterance may start a new intent, correct it, or extend it.
 - "set" contains ONLY fields the user newly provided or changed in THIS utterance. Never repeat unchanged fields. Never invent values.
 - "actually", "make it", "instead", "change to" replace the old value.
+- A question that proposes a change ("can we change it to X?", "what about X?", "could we do X?") IS a change request: apply X.
+- "date" keeps relative phrases as spoken ("next week", "the week after next").
 - "unset" only if the user explicitly drops a detail.
 - "tool": pick a tool only if the user's goal needs it now, else null.
 Tools:
 ${toolLines}
-- "reply": one short spoken sentence, max 14 words, acknowledging what changed. Never claim a booking or message was completed.
+- "reply": ALWAYS one short spoken sentence, max 14 words, acknowledging what changed. Never empty. Never claim a booking or message was completed.
 Always include all four keys. Example:
 CURRENT_STATE {"task":"schedule dinner","time":"19:00","location":null,"cuisine":"Italian"}
 UTTERANCE "no, 7:30, and somewhere in San Mateo"
@@ -71,42 +73,62 @@ export function validateInterpretation(obj) {
   return out;
 }
 
-export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1 } = {}) {
-  async function once({ state, text, tools, signal }) {
-      const attempt = AbortSignal.timeout(attemptTimeoutMs);
-      const r = await llm.chat({
-        messages: [
-          { role: 'system', content: buildSystemPrompt(tools) },
-          { role: 'user', content: JSON.stringify({ CURRENT_STATE: state.intent, UTTERANCE: text }) },
-        ],
-        tools: [buildIntentFunction(tools)],
-        toolChoice: { type: 'function', function: { name: 'update_intent' } },
-        temperature: 0,
-        maxTokens,
-        signal: signal ? AbortSignal.any([signal, attempt]) : attempt,
-      }).catch((err) => {
-        // Per-attempt timeout surfaces as 'aborted' from the client; relabel it.
-        if (err.code === 'aborted' && attempt.aborted && !signal?.aborted) err.code = 'timeout';
-        throw err;
-      });
-      const call = r.message?.tool_calls?.find((c) => c.function?.name === 'update_intent');
-      const raw = call?.function?.arguments ?? r.message?.content;
-      if (!raw) throw new LlmError('Model returned no update_intent call', { code: 'parse' });
-      const parsed = typeof raw === 'string' ? parseJsonLoose(raw) : raw;
-      return { ...validateInterpretation(parsed), latencyMs: r.latencyMs };
+/** A usable interpretation must carry at least one of set / reply / tool. */
+function isMeaningful(obj) {
+  return Boolean(obj && typeof obj === 'object' && (('set' in obj) || (typeof obj.reply === 'string' && obj.reply.trim()) || ('tool' in obj)));
+}
+
+/**
+ * Measured 2026-09-18 on Nebius GLM-5.3 (3 runs x 5 canonical utterances):
+ *   tool_choice "required": ~250 ms, but returned {} for "Can we change it for next week?"
+ *   tool_choice "auto":     ~450-900 ms, but made no call for "make it 8" / "we are four".
+ * No single mode is reliable; "required" first, then "auto" on an empty result covers all cases.
+ * (Named forced tool_choice also returned {}.)
+ */
+export const INTERPRET_MODES = Object.freeze(['required', 'auto']);
+
+export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES } = {}) {
+  async function once({ state, text, tools, signal }, toolChoice) {
+    const attempt = AbortSignal.timeout(attemptTimeoutMs);
+    const r = await llm.chat({
+      messages: [
+        { role: 'system', content: buildSystemPrompt(tools) },
+        { role: 'user', content: JSON.stringify({ CURRENT_STATE: state.intent, UTTERANCE: text }) },
+      ],
+      tools: [buildIntentFunction(tools)],
+      toolChoice,
+      temperature: 0,
+      maxTokens,
+      signal: signal ? AbortSignal.any([signal, attempt]) : attempt,
+    }).catch((err) => {
+      // Per-attempt timeout surfaces as 'aborted' from the client; relabel it.
+      if (err.code === 'aborted' && attempt.aborted && !signal?.aborted) err.code = 'timeout';
+      throw err;
+    });
+    const call = r.message?.tool_calls?.find((c) => c.function?.name === 'update_intent');
+    const raw = call?.function?.arguments ?? r.message?.content;
+    let parsed = null;
+    try { parsed = raw ? (typeof raw === 'string' ? parseJsonLoose(raw) : raw) : null; } catch { parsed = null; }
+    if (!isMeaningful(parsed)) throw Object.assign(new LlmError(`Empty interpretation (${typeof toolChoice === 'string' ? toolChoice : 'named'})`, { code: 'parse' }), { latencyMs: r.latencyMs });
+    return { ...validateInterpretation(parsed), latencyMs: r.latencyMs, mode: toolChoice };
   }
 
   return {
     async interpret(input) {
       let lastErr;
+      let spent = 0;
       for (let i = 0; i <= retries; i++) {
-        try {
-          const out = await once(input);
-          return i ? { ...out, retried: i } : out;
-        } catch (err) {
-          lastErr = err;
-          // Retry transient failures only; never retry a user/turn cancellation.
-          if (input.signal?.aborted || !['timeout', 'network', 'parse', 'http'].includes(err.code) || (err.code === 'http' && err.status < 500 && err.status !== 429)) break;
+        for (const mode of modes) {
+          try {
+            const out = await once(input, mode);
+            spent += out.latencyMs;
+            return { ...out, latencyMs: spent, ...(i || mode !== modes[0] ? { retried: i + (mode !== modes[0] ? 1 : 0) } : {}) };
+          } catch (err) {
+            lastErr = err;
+            spent += err.latencyMs || 0;
+            // Never retry a user/turn cancellation; non-retryable HTTP errors stop immediately.
+            if (input.signal?.aborted || !['timeout', 'network', 'parse', 'http'].includes(err.code) || (err.code === 'http' && err.status < 500 && err.status !== 429)) throw err;
+          }
         }
       }
       throw lastErr;

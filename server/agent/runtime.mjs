@@ -94,9 +94,9 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
     return { id: action.id, promise: session.inflight.get(action.id) ?? Promise.resolve({ id: action.id, invalidated: true }), reused: true };
   }
 
-  async function runTurn(sessionId, text, { onEvent, signal } = {}) {
+  async function runTurn(sessionId, text, { onEvent, signal, turnId: presetTurnId } = {}) {
     const session = getSession(sessionId) || createSession(sessionId || undefined);
-    const turnId = shortId('t');
+    const turnId = presetTurnId || shortId('t');
     const events = [];
     const listener = (ev) => { events.push(ev); onEvent?.(ev); };
     session.listeners.add(listener);
