@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server.mjs",
-    "test": "node --test test/",
-    "test:live": "node --env-file=.env --test test/live/",
+    "test": "node --test 'test/*.test.mjs'",
+    "test:live": "node --env-file=.env --test 'test/live/*.test.mjs'",
     "probe:nebius": "node --env-file=.env scripts/nebius-probe.mjs"
   },
   "dependencies": {
