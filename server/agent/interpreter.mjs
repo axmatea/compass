@@ -49,6 +49,7 @@ Rules:
 - The utterance may start a new intent, correct it, or extend it.
 - "set" contains ONLY fields the user newly provided or changed in THIS utterance. Never repeat unchanged fields. Never invent values.
 - "actually", "make it", "instead", "change to" replace the old value.
+- A bare number ("make it eight", "make it 8", "сделай в девять") is the TIME (dinner -> PM). It is party_size ONLY if people are mentioned ("for eight", "eight people", "table for 8", "нас восемь").
 - A question that proposes a change ("can we change it to X?", "what about X?", "could we do X?") IS a change request: apply X.
 - "date" keeps relative phrases as spoken ("next week", "the week after next").
 - "unset" only if the user explicitly drops a detail.

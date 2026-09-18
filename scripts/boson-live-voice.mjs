@@ -44,6 +44,14 @@ const SCENARIOS = {
     T3: 'Move it to next week.',
     T4: 'Actually, not next week. The week after next.',
   },
+  // R4: T2 arrives as two fragments; the second overlaps COMPASS's reply to the first.
+  split: {
+    T1: 'Schedule dinner tomorrow at 7 and find an Italian restaurant.',
+    T2a: 'Actually, make it 8.',
+    T2b: 'Somewhere near Palo Alto.',
+    T3: 'Move it to next week.',
+    T4: 'Actually, not next week. The week after next.',
+  },
   ru: {
     T1: 'Запланируй ужин завтра в семь и найди итальянский ресторан.',
     T2: 'Нет, лучше в восемь. Где-нибудь рядом с Пало-Альто.',
@@ -126,7 +134,14 @@ try {
   say('T1');
   await waitFor(() => lastStatus() === 'SPEAKING', Number(process.env.T1_WAIT || 30000), 'COMPASS speaking after T1');
   await new Promise((r) => setTimeout(r, 700)); // let it talk a bit, then interrupt
-  say('T2');
+  if (LINES.T2) say('T2');
+  else {
+    const seen = statuses.length;
+    say('T2a');
+    // Fragment 2 starts the moment COMPASS begins answering fragment 1 (overlap), or after SPLIT_GAP_MS.
+    await waitFor(() => statuses.slice(seen).some((x) => x.s === 'SPEAKING') || false, Number(process.env.SPLIT_GAP_MS || 15000), 'COMPASS answering fragment 1').catch(() => {});
+    say('T2b');
+  }
   await waitFor(() => log.some((l) => l.type === 'compass.state_patch' && l.intent?.location), 30000, 'state patch with location');
   await waitFor(() => { const s = backend.runtime.getSession(sessionId())?.state; return s && s.actions.some((a) => a.status === 'done' && a.args.location); }, 30000, 'rescoped search done');
   await waitFor(() => lastStatus() === 'LISTENING', 30000, 'back to listening');

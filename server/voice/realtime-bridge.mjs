@@ -25,13 +25,14 @@
 //                     {type:'metrics', ...} {type:'error', code, message}
 import { randomUUID } from 'node:crypto';
 import { buildSessionConfig, speakEvents, describeCloseCode } from './boson-realtime.mjs';
+import { detectLang, t as tr } from '../i18n/lang.mjs';
 
 export const STATUS = Object.freeze({
   LISTENING: 'LISTENING', SPEECH_DETECTED: 'SPEECH_DETECTED', THINKING: 'THINKING', ACTING: 'ACTING',
   SPEAKING: 'SPEAKING', INTERRUPTED: 'INTERRUPTED', REPLANNING: 'REPLANNING',
 });
 
-export function createRealtimeBridge({ client, runtime, connectUpstream, voice = 'default', turnDetection = 'semantic_vad', sessionId, now = () => performance.now(), logger = console }) {
+export function createRealtimeBridge({ client, runtime, connectUpstream, voice = 'default', turnDetection = 'semantic_vad', sessionId, now = () => performance.now(), logger = console, fragmentRecoverMs = 2500 }) {
   // client: { sendJson(obj), sendBinary(buf), close(code, reason) }
   const known = sessionId && runtime.getSession(sessionId);
   const session = known || runtime.createSession();
@@ -46,6 +47,74 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
   const speakQueue = [];       // [{ text, turnSeq, reason }]
   const transcripts = new Map(); // user itemId -> text
   const pendingTranscriptTurns = new Map(); // itemId -> resolve (guard path)
+  // R4: every user speech segment must become a COMPASS turn. Boson occasionally emits no
+  // transcription / no compass_turn for a fragment that overlaps a response; recover it.
+  const segments = new Map(); // user itemId -> { handled, recovered, timer }
+  function markHandled(itemId) { const sg = itemId && segments.get(itemId); if (sg) { sg.handled = true; clearTimeout(sg.timer); } }
+  function recoverSegment(itemId, text, via = 'transcript') {
+    const sg = segments.get(itemId);
+    if (!sg || sg.handled || !text) return;
+    sg.recovered = true;
+    markHandled(itemId);
+    client.sendJson({ type: 'compass', event: { type: 'reasoning_status', stage: 'fragment_recovered', itemId, text, via } });
+    runCompassTurn(text, { userItemId: itemId }).catch((err) => fail('turn_failed', err));
+  }
+  // Mic audio as appended to Boson (PCM16 24 kHz), last ~30 s, so a lost fragment can be re-heard.
+  const MS_BYTES = 48; // 24000 Hz * 2 bytes / 1000
+  let micChunks = []; let micStartMs = 0; let micTotalMs = 0;
+  function keepMic(buf) {
+    micChunks.push(buf); micTotalMs += buf.length / MS_BYTES;
+    while (micChunks.length > 1 && micTotalMs - micStartMs - micChunks[0].length / MS_BYTES > 30_000) micStartMs += micChunks.shift().length / MS_BYTES;
+  }
+  function micSlice(fromMs, toMs) {
+    const all = Buffer.concat(micChunks);
+    const a = Math.max(0, Math.floor((fromMs - micStartMs) * MS_BYTES / 2) * 2);
+    const b = Math.min(all.length, Math.ceil((toMs - micStartMs) * MS_BYTES / 2) * 2);
+    return b > a ? all.subarray(a, b) : null;
+  }
+  let lastLang = 'en';
+
+  /** Re-hear a fragment on a short-lived second Boson session (verified contract: VAD + transcription + compass_turn). */
+  async function reHear(pcm) {
+    const side = await connectUpstream();
+    try {
+      return await new Promise((resolve) => {
+        const done = (text) => { clearTimeout(timer); resolve(String(text || '').trim()); };
+        const timer = setTimeout(() => done(''), 5000);
+        side.on('conversation.item.input_audio_transcription.completed', (e) => done(e.transcript));
+        side.on('response.function_call_arguments.done', (e) => { try { done(JSON.parse(e.arguments || '{}').utterance); } catch { /* keep waiting */ } });
+        side.send({ type: 'session.update', session: buildSessionConfig({ voice, turnDetection: 'server_vad' }) });
+        const padded = Buffer.concat([pcm, Buffer.alloc(24000 * 2)]); // 1 s trailing silence closes the turn
+        for (let i = 0; i < padded.length; i += 256 * 1024) side.send({ type: 'input_audio_buffer.append', audio: padded.subarray(i, i + 256 * 1024).toString('base64') });
+      });
+    } finally { side.close?.(1000, 'rehear done'); }
+  }
+
+  function watchSegment(itemId) {
+    const sg = itemId && segments.get(itemId);
+    if (!sg || sg.handled) return;
+    clearTimeout(sg.timer);
+    sg.timer = setTimeout(async () => {
+      if (sg.handled || closed) return;
+      const known = transcripts.get(itemId);
+      if (known) return recoverSegment(itemId, known);
+      const pcm = sg.startMs != null && sg.endMs != null ? micSlice(sg.startMs - 200, sg.endMs + 200) : null;
+      let text = '';
+      if (pcm && pcm.length > MS_BYTES * 200) {
+        try { text = await reHear(pcm); } catch (err) { logger.error?.('[voice] rehear failed', String(err?.message || err).slice(0, 120)); }
+      }
+      if (sg.handled || closed) return;
+      if (text) return recoverSegment(itemId, text, 'rehear');
+      // Never silently lose speech: say so.
+      sg.handled = true;
+      awaitingTurn = false;
+      const durMs = sg.startMs != null && sg.endMs != null ? sg.endMs - sg.startMs : null;
+      client.sendJson({ type: 'compass', event: { type: 'reasoning_status', stage: 'fragment_lost', itemId, durMs } });
+      // Coughs / noise bursts are not worth an apology; real speech is.
+      if (durMs == null || durMs >= 600) requestSpeech(tr(lastLang).fallback, { turnSeq, reason: 'fragment_lost' });
+      else idleStatus();
+    }, fragmentRecoverMs);
+  }
   const m = {};                // current latency marks
   let speaking = false;        // upstream is generating audio for the active response
   // Playback tracking: Boson generates audio faster than real time, so "COMPASS is speaking"
@@ -135,6 +204,8 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
 
   // ---------- COMPASS turn ----------
   async function runCompassTurn(utterance, { callId, userItemId } = {}) {
+    markHandled(userItemId);
+    lastLang = detectLang(utterance);
     const seq = ++turnSeq;
     m.recognizedAt = now();
     awaitingTurn = false;
@@ -209,8 +280,21 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
   // ---------- upstream events ----------
   function wireUpstream(up) {
     up.on('session.created', () => client.sendJson({ type: 'ready', sessionId: sid, provider: 'boson', voice, sampleRate: 24000, ...(sessionReset ? { sessionReset: true } : {}) }));
-    up.on('input_audio_buffer.speech_started', (e) => { m.speechStartedAt = now(); m.firstAudioAt = null; userSpeaking = true; interrupt('speech_started'); if (e.item_id) m.userItemId = e.item_id; });
-    up.on('input_audio_buffer.speech_stopped', () => { m.speechStoppedAt = now(); userSpeaking = false; awaitingTurn = true; setStatus(STATUS.THINKING); });
+    up.on('input_audio_buffer.speech_started', (e) => {
+      m.speechStartedAt = now(); m.firstAudioAt = null; userSpeaking = true; interrupt('speech_started');
+      if (e.item_id) {
+        m.userItemId = e.item_id;
+        if (!segments.has(e.item_id)) segments.set(e.item_id, { handled: false, recovered: false, timer: null, startMs: e.audio_start_ms ?? null, endMs: null });
+        while (segments.size > 64) segments.delete(segments.keys().next().value);
+      }
+    });
+    up.on('input_audio_buffer.speech_stopped', (e) => {
+      m.speechStoppedAt = now(); userSpeaking = false; awaitingTurn = true; setStatus(STATUS.THINKING);
+      const segId = segments.has(e.item_id) ? e.item_id : m.userItemId;
+      const sg = segments.get(segId);
+      if (sg && e.audio_end_ms != null) sg.endMs = e.audio_end_ms;
+      watchSegment(segId);
+    });
     up.on('conversation.item.input_audio_transcription.completed', (e) => {
       transcripts.set(e.item_id, e.transcript || '');
       client.sendJson({ type: 'transcript', role: 'user', text: e.transcript || '', final: true, itemId: e.item_id, source: 'higgs-stt' });
@@ -230,6 +314,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
       if (e.name !== 'compass_turn') return;
       let utterance = '';
       try { utterance = String(JSON.parse(e.arguments || '{}').utterance || '').trim(); } catch { /* bad args */ }
+      if (segments.get(m.userItemId)?.recovered) { sendUp({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: e.call_id, output: '{"say":""}' } }); return; }
       if (!utterance && m.userItemId) utterance = transcripts.get(m.userItemId) || '';
       if (!utterance) { sendUp({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: e.call_id, output: '{"say":""}' } }); return; }
       runCompassTurn(utterance, { callId: e.call_id, userItemId: m.userItemId }).catch((err) => fail('turn_failed', err));
@@ -298,6 +383,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
     if (closed) return;
     closed = true;
     clearTimeout(playbackTimer);
+    for (const sg of segments.values()) clearTimeout(sg.timer);
     unsubscribe();
     upstream?.close(1000, 'client gone');
     client.close(code, reason);
@@ -314,6 +400,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
     onClientAudio(buf) {
       if (!upstream || closed || !buf?.length) return;
       // ~1 MiB base64 cap per append; browser chunks are ~40 ms (1920 bytes).
+      keepMic(buf);
       for (let i = 0; i < buf.length; i += 256 * 1024) sendUp({ type: 'input_audio_buffer.append', audio: buf.subarray(i, i + 256 * 1024).toString('base64') });
     },
     onClientJson(msg) {
