@@ -11,11 +11,19 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "test": "node --test 'test/*.test.mjs'",
+    "test:live": "node --env-file-if-exists=.env --test 'test/live/*.test.mjs'",
+    "probe:nebius": "node --env-file-if-exists=.env scripts/nebius-probe.mjs",
+    "start:local": "node --env-file-if-exists=.env server.mjs",
+    "doctor": "node --env-file-if-exists=.env scripts/doctor.mjs",
+    "probe:boson": "node --env-file-if-exists=.env scripts/boson-smoke.mjs",
+    "test:voice:live": "node --env-file-if-exists=.env scripts/boson-live-voice.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "22.16.5",
