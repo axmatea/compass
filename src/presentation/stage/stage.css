@@ -167,3 +167,24 @@ body.presenter{cursor:auto;overflow:auto;background:#0b1014}
 .pv-btns{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
 .pv-btns button{font:inherit;font-size:16px;color:#fff;background:#ffffff10;border:1px solid #ffffff30;border-radius:10px;padding:12px 18px;cursor:pointer}
 .pv-btns button:hover{background:#ffffff22}
+
+/* ---------- five-scene deck ---------- */
+.s-useful .u0{top:300px}
+.s-useful .u1{top:530px;color:var(--gold)}
+.s-useful.on-1 .u0{opacity:.32;transition:opacity .45s ease}
+.s-app .ln{top:auto;bottom:150px}
+.s-chain .flow{position:absolute;left:120px;right:120px;top:380px;display:flex;align-items:center;justify-content:center;gap:0}
+.s-chain .node{width:470px;height:250px;border:1.5px solid #c3e3f94d;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#0b1a22b3;opacity:0;transform:translateY(30px);transition:opacity .5s ease,transform var(--fast) var(--ease);transition-delay:calc(var(--i)*.35s + .15s)}
+.s-chain .node-label{font-size:58px;letter-spacing:-.03em}
+.s-chain .node-by{font-size:32px;color:var(--gold);letter-spacing:.04em}
+.s-chain .arrow{width:90px;height:2px;background:#c3e3f980;opacity:0;transition:opacity .4s ease;transition-delay:calc(.5s + var(--d,0s))}
+.s-chain .a1{--d:.35s}
+.is-active.s-chain .node,.is-active.s-chain .arrow{opacity:1;transform:none}
+.rec-label{position:absolute;left:40px;top:34px;z-index:3;padding:12px 22px;border-radius:999px;background:#000c;color:var(--ink);font-size:28px;letter-spacing:.12em;text-transform:uppercase;display:none}
+.overlay[data-mode=fallback] .rec-label{display:block}
+.pv-speech p{white-space:pre-line}
+.pv .say{color:var(--gold);font-size:20px}
+.pv-path.recorded{color:var(--gold)}
+.s-chain .node{width:500px}
+.s-chain .node-label{font-size:48px;white-space:nowrap;text-transform:none}
+.s-cta .domain.big{font-size:84px;color:var(--ink);letter-spacing:-.02em}

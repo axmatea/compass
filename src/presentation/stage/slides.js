@@ -1,119 +1,79 @@
-// Slide-to-speech map. Every slide: steps (on-screen builds), exact speech per step,
-// motion, media, trigger and expected duration (speech at ~150 wpm + scripted pauses).
-import fixture from "../../cinematic/film/dinner-turns.json";
-import { deriveRows, formatValue } from "../../cinematic/film/intent.js";
+// FIVE-SCENE deck (final presentation replacement). Speaker notes are verbatim from the brief.
+// The previous 10-scene deck is archived in ./archive/slides-v10.js (open with ?deck=v10)
+// and in git tag present-v10-archive.
 import { CONFIG } from "./config.js";
 
-const rows = deriveRows(fixture);
-const t1 = fixture.turns[0];
-const firstIntent = t1.response.patch.map((p) => formatValue(p.field, p.to));
 const WPS = 2.5;
-const words = (s) => s.replace(/\[[^\]]*\]/g, "").split(/\s+/).filter(Boolean).length;
+const words = (s) => s.replace(/\[[^\]]*\]/g, "").split(/\s+/).filter((w) => w && !/^[A-ZŸ]+:$/.test(w)).length;
 const pauses = (s) => [...s.matchAll(/\[PAUSE (\d+(?:\.\d+)?)s\]/g)].reduce((a, m) => a + Number(m[1]), 0);
 export const speechSeconds = (s) => Math.round(words(s) / WPS + pauses(s));
 
+// Scene 3 is gated: page generation is NOT in the product (server/tools has restaurant search only).
+const APP = CONFIG.app;
+
 export const SLIDES = [
   {
-    id: "founders", title: "Founders", orb: "hidden", media: CONFIG.founders.photo ? "founders photo" : "none (photo slot empty)",
-    motion: "Names mask-reveal, × draws, origins and role fade up.",
-    trigger: "Auto on start. → after the last sentence.",
+    id: "founders", title: "NAYL × VINCENT", orb: "hidden", media: "none",
+    motion: "Names mask-reveal, × draws, Russia × France and COMPASS fade up.",
+    trigger: "Auto on start. → after 'what we worked on today.'",
     steps: [
-      { speech: "Hey everyone. I'm Nail, originally from Russia, and this is Vincent, from France. We build SaaS products together, products that are already generating real revenue. [PAUSE 0.5s] And lately we've become obsessed with one question." },
-    ],
-    flag: CONFIG.founders.arr ? null : "ARR not verified: figure hidden. 'Already generating real revenue' must be true before you say it.",
-  },
-  {
-    id: "human", title: "Does AI feel human?", orb: "hidden", media: "human-balcony.mp4 (film-A 20.3-25.9s, cropped, muted loop)",
-    motion: "Footage fades in dim; the line masks up word by word.",
-    trigger: "→ right after 'one question.'",
-    steps: [
-      { speech: "Quick show of hands. [PAUSE 1s] Who here has ever talked to an AI voice agent that was so good... that even your grandma couldn't figure out it was AI? [PAUSE 3s] Yeah. Exactly. [PAUSE 0.5s] Neither have we. [PAUSE 3s]" },
+      { speech: "NAYL: “Hey everyone. I’m NAYL, from Russia.”\nVINCENT: “And I’m Vincent, from France.”\nNAYL: “We build SaaS. Here’s what we worked on today.”" },
     ],
   },
   {
-    id: "problem", title: "Humans change their minds", orb: "hidden", media: "human-speak.mp4 (hf night office, muted loop)",
-    motion: "Line 1 masks up over footage. Step 2: footage desaturates and freezes, line 2 cuts in hard.",
-    trigger: "→ after the laugh. → again on 'AI keeps executing'.",
+    id: "useful", title: "Less talk. Something useful.", orb: "hidden", media: "none",
+    motion: "‘Less talk.’ masks up. Step 2 (on NAYL's last line): ‘Something useful.’ lands in gold.",
+    trigger: "→ only when NAYL says ‘So we wanted more than a good conversation’.",
     steps: [
-      { speech: "And that's actually the deeper problem. AI has become incredibly good at following instructions. But humans are terrible at giving final instructions. We change our minds. We interrupt ourselves. We realize halfway through that what we asked for isn't actually what we wanted." },
-      { speech: "[PAUSE 1s]" },
+      { speech: "NAYL: “Quick show of hands—who here actually enjoys talking to AI voice agents?”\n[PAUSE 2s] (do not assume the response)\nVINCENT: “I’m harder to impress. During testing, ours moved dinner to seven a.m. My grandma calls that breakfast.”\n[PAUSE 1s]" },
+      { speech: "NAYL: “So we wanted more than a good conversation. We wanted something useful to come out of it.”" },
     ],
   },
   {
-    id: "action", title: "Request, plan, action", orb: "hidden", media: "none (HTML)",
-    motion: "Three nodes draw in with connectors. Step 2: action starts running. Step 3: the correction arrives and bounces off; action keeps running on 7:00 PM.",
-    trigger: "→ enters. → starts action. → interrupts.",
+    id: "app", demo: true, title: "Actual application", orb: "center",
+    media: `LIVE: ${CONFIG.demoUrl}. RECORDED: ${CONFIG.recording.src || "none yet (no recording of the actual workflow exists)"}`,
+    motion: "Orb breathes under ‘Actual application.’ Step 2: orb expands into the running product.",
+    trigger: "→ opens the product (LIVE or RECORDED per path, M switches). PageDown / Back returns.",
     steps: [
-      { speech: "And once most agents start acting," },
-      { speech: "they're optimized around the instruction you already gave them." },
-      { speech: "[PAUSE 1.5s]" },
+      { speech: "NAYL: “We’ve met some great people here. Let’s make a page to stay in touch.”" },
+      {
+        speech: APP.verified
+          ? `NAYL (to COMPASS): “${APP.request}”\n[let it run, do not talk over it]\nVINCENT: “Here’s the page it just created.”`
+          : "[HOLD] Page generation is not in the product yet. Do NOT say the request and do NOT say ‘Here’s the page it just created’ until Orchestrator confirms a verified build.",
+        live: APP.measuredSeconds || 60,
+      },
     ],
+    flag: APP.verified ? null : "SCENE 3 BLOCKED: no page-generation capability in main / feat/agent-core. Waiting on Orchestrator build confirmation.",
   },
   {
-    id: "compass", title: "COMPASS", orb: "hero", media: "orb (HTML)",
-    motion: "Previous slide collapses into a point; the orb grows out of it. Wordmark, then the line.",
-    trigger: "→ collapses into the orb.",
+    id: "chain", title: "Voice → Request → Generated page", orb: "corner", media: "none (HTML)",
+    motion: "Three nodes build left to right with provider labels under each.",
+    trigger: "→ enters after the result is shown.",
     steps: [
-      { speech: "So we built COMPASS." },
-      { speech: "COMPASS doesn't just answer the request you gave it. It understands when the request changes while it's already acting." },
+      { speech: "“Boson handled the voice. GLM on Nebius interpreted the request. Our application turned that request into the page you just opened. The important part isn’t the assistant saying ‘done.’ It’s having a result you can actually open and use.”" },
     ],
+    flag: APP.verified ? null : "PROVISIONAL: Boson voice and GLM-5.3 on Nebius are verified in prod. ‘turned that request into the page’ is NOT true until Scene 3 is built.",
   },
   {
-    id: "demo", title: "Live demo", orb: "center", media: "LIVE /demo in a full-screen frame. Fallback: demo-fallback.mp4 (18.5s, real /demo replaying the recorded session)",
-    motion: "Orb breathes. Step 2: orb expands and dissolves into the live product.",
-    trigger: "→ opens LIVE demo. R = recorded fallback. PageDown / presenter → returns.",
+    id: "cta", title: "COMPASS", orb: "cta", media: `QR → https://${CONFIG.domain}`,
+    motion: "Orb settles above the wordmark; domain and QR fade up. Step 2: ‘Thank you.’",
+    trigger: "→ enters. → on ‘Thank you’.",
     steps: [
-      { speech: "But explaining this is boring. Let me just show you." },
-      { speech: "[LIVE] \"Schedule dinner tomorrow at 7 and find an Italian restaurant.\" [let it start acting] \"Actually, make it 8. Somewhere near Palo Alto.\" [PAUSE 2s] That's the part. [let it finish]", live: 45 },
-    ],
-  },
-  {
-    id: "takeaway", title: "It understood what changed", orb: "corner", media: "state strip from contract v1 fixture",
-    motion: "Line 1 in. Line 2 pushes it up. Step 3: the dinner state lays out: kept values stay put, 7:00 PM strikes, 8:00 PM and Palo Alto light gold.",
-    trigger: "→ per line.",
-    steps: [
-      { speech: "Notice what just happened. It didn't restart the conversation." },
-      { speech: "It didn't throw away everything we'd already figured out. It understood what changed..." },
-      { speech: "[PAUSE 0.5s] and what didn't." },
-    ],
-  },
-  {
-    id: "stack", title: "Technology", orb: "corner", media: "none (HTML)",
-    motion: "Stack builds top-down. Step 2 lights Boson. Step 3 lights Nebius.",
-    trigger: "→ per layer you talk about.",
-    steps: [
-      { speech: "Underneath it," },
-      { speech: "Boson gives us realtime conversation and interruption." },
-      { speech: "Nebius gives COMPASS the reasoning layer that understands mutable intent and replans actions. But the important part isn't the architecture. It's how the interaction feels." },
-    ],
-  },
-  {
-    id: "partners", title: "Design partners", orb: "corner", media: "none",
-    motion: "Line 1 in; step 2 line 1 dims, 'Design partners.' lands large.",
-    trigger: "→ on 'design partners'.",
-    steps: [
-      { speech: "We're not trying to open COMPASS to everyone tomorrow." },
-      { speech: "We're starting with a small number of design partners where voice AI actually touches real workflows. Because this only gets interesting when COMPASS can actually act." },
-    ],
-  },
-  {
-    id: "cta", title: "Build with us", orb: "cta", media: "QR (mycompass.world)",
-    motion: "Orb settles above the wordmark; domain and QR fade up. Step 2: 'Thank you.'",
-    trigger: "→ enters. → on 'Thank you'.",
-    steps: [
-      { speech: "So if you're building a company where people are still clicking through software they should simply be able to talk to... come find us. Maybe you're one of the first teams we build COMPASS with." },
-      { speech: "Thank you. [PAUSE 3s]" },
+      { speech: "NAYL: “We’re COMPASS. Find us at mycompass.world.”" },
+      { speech: "NAYL: “Thank you.” [PAUSE 3s]" },
     ],
   },
 ];
 
-export const STATE_STRIP = rows; // kept / updated / added straight from contract v1
-export const FIRST_INTENT = firstIntent;
+export const LINES = {
+  liveFailure: "The live run has stalled. Here’s the recorded run.",
+  recordingFirst: "Here’s a recorded run of the application, with its original audio.",
+};
 
-export function timing() {
+export function timing(slides = SLIDES) {
   let speech = 0;
   let live = 0;
-  const per = SLIDES.map((s) => {
+  const per = slides.map((s) => {
     const sp = s.steps.reduce((a, st) => a + (st.live ? 0 : speechSeconds(st.speech)), 0) + (s.steps.length - 1) * 0.5;
     const lv = s.steps.reduce((a, st) => a + (st.live || 0), 0);
     speech += sp;

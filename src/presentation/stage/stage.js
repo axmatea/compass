@@ -1,9 +1,14 @@
 import { CONFIG } from "./config.js";
-import { SLIDES, STATE_STRIP, FIRST_INTENT, timing, speechSeconds } from "./slides.js";
+import { SLIDES as FIVE, LINES, timing as timeDeck, speechSeconds } from "./slides.js";
+import { SLIDES_V10, STATE_STRIP_V10 as STATE_STRIP, FIRST_INTENT_V10 as FIRST_INTENT } from "./archive/slides-v10.js";
 
 const params = new URLSearchParams(location.search);
 const PRESENTER = params.has("presenter");
 const DEMO_URL = params.get("demo") || CONFIG.demoUrl;
+const SLIDES = params.get("deck") === "v10" ? SLIDES_V10 : FIVE; // archived 10-scene deck stays runnable
+const timing = () => timeDeck(SLIDES);
+const isDemo = (S) => !!(S.demo || S.id === "demo");
+const REC = CONFIG.recording;
 const chan = "BroadcastChannel" in window ? new BroadcastChannel("compass-stage") : null;
 
 const h = (tag, cls, text) => {
@@ -90,6 +95,29 @@ const B = {
     s.append(h("div", "wordmark", "COMPASS"), line("AI that adapts while acting.", "lg center step-1"));
     return s;
   },
+  useful() {
+    const s = h("section", "slide s-useful");
+    s.append(line("Less talk.", "xxl u0"), line("Something useful.", "xxl u1 step-1"));
+    return s;
+  },
+  app() {
+    const s = h("section", "slide s-app");
+    s.append(line("Actual application.", "lg center"));
+    return s;
+  },
+  chain() {
+    const s = h("section", "slide s-chain");
+    const flow = h("div", "flow");
+    [["Voice", "Boson"], ["Request", "GLM on Nebius"], ["Generated page", "COMPASS application"]].forEach(([n, by], i) => {
+      const node = h("div", `node n${i}`);
+      node.style.setProperty("--i", i);
+      node.append(h("span", "node-label", n), h("span", "node-by", by));
+      flow.append(node);
+      if (i < 2) flow.append(h("span", `arrow a${i}`));
+    });
+    s.append(flow);
+    return s;
+  },
   demo() {
     const s = h("section", "slide s-demo");
     s.append(line("Let me show you.", "lg center"));
@@ -154,7 +182,8 @@ const B = {
     qr.src = CONFIG.qr;
     qr.alt = `QR code: ${CONFIG.domain}`;
     const right = h("div", "cta-right");
-    right.append(line("Build with us.", "lg"), h("div", "domain rv", CONFIG.domain));
+    if (SLIDES === FIVE) right.append(h("div", "domain big rv", CONFIG.domain)); // scene 5: COMPASS / domain / QR only
+    else right.append(line("Build with us.", "lg"), h("div", "domain rv", CONFIG.domain));
     const row = h("div", "cta-row");
     row.append(right, qr);
     s.append(h("div", "wordmark", "COMPASS"), row, line("Thank you.", "lg center thanks step-1"));
@@ -168,7 +197,7 @@ if (PRESENTER) {
   document.title = "COMPASS · Presenter";
   const root = h("div", "pv");
   document.body.append(root);
-  let st = { slide: 0, step: 0, overlay: null, demoArmed: "unknown" };
+  let st = { slide: 0, step: 0, overlay: null, demoArmed: "unknown", path: CONFIG.stagePath, rec: !!REC.src };
   const t0 = { all: 0, slide: Date.now() };
   const T = timing();
   const render = () => {
@@ -187,6 +216,7 @@ if (PRESENTER) {
       h("span", null, `slide ${el((Date.now() - t0.slide) / 1000)} / target ${el(target)}`),
       h("span", null, `total ${t0.all ? el((Date.now() - t0.all) / 1000) : "0:00"} / plan ${el(T.total)}`),
       h("span", `pv-demo ${st.demoArmed}`, `demo: ${st.overlay ? st.overlay.toUpperCase() + " ON SCREEN" : st.demoArmed}`),
+      h("span", `pv-path ${st.path}`, `path: ${st.path.toUpperCase()} · recording: ${st.rec ? "ready" : "NONE"}`),
     );
     const speech = h("div", "pv-speech");
     S.steps.forEach((x, i) => {
@@ -196,9 +226,13 @@ if (PRESENTER) {
     const side = h("div", "pv-side");
     side.append(h("small", null, "TRIGGER"), h("p", null, S.trigger), h("small", null, "MOTION"), h("p", null, S.motion), h("small", null, "MEDIA"), h("p", null, S.media));
     if (S.flag) side.append(h("small", "warn", "CHECK"), h("p", "warn", S.flag));
+    if (isDemo(S)) {
+      const say = st.overlay === "fallback" ? (st.path === "recorded" ? LINES.recordingFirst : LINES.liveFailure) : st.path === "recorded" ? LINES.recordingFirst : `If it stalls: R, then “${LINES.liveFailure}”`;
+      side.append(h("small", null, "SAY"), h("p", "say", say));
+    }
     side.append(h("small", null, "NEXT"), h("p", null, next ? `${next.title}: ${next.steps[0].speech}` : "End"));
     const btns = h("div", "pv-btns");
-    [["← Prev", "prev"], ["Next →", "next"], ["Live demo", "demo"], ["Recorded demo", "fallback"], ["Close demo", "close"], ["Black", "black"]].forEach(([t, cmd]) => {
+    [["← Prev", "prev"], ["Next →", "next"], ["Live run", "demo"], ["Recorded run", "fallback"], ["Close run", "close"], ["Switch path (M)", "path"], ["Black", "black"]].forEach(([t, cmd]) => {
       const b = h("button", null, t);
       b.onclick = () => chan?.postMessage({ type: "cmd", cmd });
       btns.append(b);
@@ -207,6 +241,7 @@ if (PRESENTER) {
   };
   chan?.addEventListener("message", (e) => {
     if (e.data.type === "state") {
+      if (e.data.deck !== SLIDES.length) return; // a stage running another deck version
       if (e.data.slide !== st.slide) t0.slide = Date.now();
       if (!t0.all && (e.data.slide || e.data.step)) t0.all = Date.now();
       st = e.data;
@@ -214,7 +249,7 @@ if (PRESENTER) {
     }
   });
   addEventListener("keydown", (e) => {
-    const map = { ArrowRight: "next", PageDown: "next", " ": "next", ArrowLeft: "prev", PageUp: "prev", r: "fallback", d: "demo", Escape: "close", b: "black" };
+    const map = { ArrowRight: "next", PageDown: "next", " ": "next", ArrowLeft: "prev", PageUp: "prev", r: "fallback", d: "demo", Escape: "close", b: "black", m: "path" };
     if (map[e.key]) { e.preventDefault(); chan?.postMessage({ type: "cmd", cmd: map[e.key] }); }
   });
   setInterval(render, 1000);
@@ -236,12 +271,14 @@ if (PRESENTER) {
   iframe.allow = "microphone; autoplay";
   iframe.title = "COMPASS live demo";
   const fb = h("video", "demo-video");
-  Object.assign(fb, { src: CONFIG.fallbackVideo, muted: true, playsInline: true, preload: "auto" });
+  Object.assign(fb, { muted: !REC.hasAudio, playsInline: true, preload: "auto" });
+  if (REC.src) fb.src = REC.src;
+  const recLabel = h("div", "rec-label", REC.label); // recordings are always labelled on screen
   const back = h("button", "back", "Back to slides →");
   const z = Number(params.get("zoom")) || CONFIG.demoZoom;
   Object.assign(iframe.style, { width: `${1920 / z}px`, height: `${1080 / z}px`, transform: `scale(${z})`, transformOrigin: "0 0", inset: "auto", left: "0", top: "0" });
   fb.style.transform = `scale(${CONFIG.fallbackZoom})`;
-  overlay.append(iframe, fb, back);
+  overlay.append(iframe, fb, recLabel, back);
   const black = h("div", "black");
   stage.append(...slidesEl, orb, overlay, black);
   frame.append(stage);
@@ -259,8 +296,9 @@ if (PRESENTER) {
   let overlayMode = null; // null | "live" | "fallback"
   let demoArmed = "loading";
   let demoLoaded = false;
+  let path = ["live", "recorded"].includes(params.get("path")) ? params.get("path") : CONFIG.stagePath;
 
-  const broadcast = () => chan?.postMessage({ type: "state", slide: cur, step, overlay: overlayMode, demoArmed });
+  const broadcast = () => chan?.postMessage({ type: "state", slide: cur, step, overlay: overlayMode, demoArmed, path, rec: !!REC.src, deck: SLIDES.length });
   function apply(dir = 1) {
     slidesEl.forEach((el, i) => {
       el.classList.toggle("is-active", i === cur);
@@ -278,7 +316,7 @@ if (PRESENTER) {
     stage.dataset.slide = SLIDES[cur].id;
     stage.dataset.dir = dir;
     history.replaceState(null, "", `#${cur + 1}.${step}`);
-    if (SLIDES[cur].id === "demo" || SLIDES[cur].id === "compass") armDemo();
+    if (path === "live" && (isDemo(SLIDES[cur]) || SLIDES[cur + 1] && isDemo(SLIDES[cur + 1]))) armDemo();
     broadcast();
   }
 
@@ -309,6 +347,7 @@ if (PRESENTER) {
 
   function openOverlay(mode) {
     if (mode === "live" && demoArmed !== "live") mode = "fallback";
+    if (mode === "fallback" && !REC.src) { broadcast(); return false; } // no verified recording: stay on the slide
     overlayMode = mode;
     stage.classList.add("demo-open");
     overlay.dataset.mode = mode;
@@ -322,7 +361,7 @@ if (PRESENTER) {
     stage.classList.remove("demo-open");
     fb.pause();
     window.focus();
-    if (advance && SLIDES[cur].id === "demo") go(cur + 1, 0);
+    if (advance && isDemo(SLIDES[cur])) go(cur + 1, 0);
     else broadcast();
   }
   back.onclick = () => closeOverlay(true);
@@ -340,7 +379,7 @@ if (PRESENTER) {
   function next() {
     if (overlayMode) return closeOverlay(true);
     const S = SLIDES[cur];
-    if (S.id === "demo" && step === 0) { step = 1; apply(); return openOverlay("live"); }
+    if (isDemo(S) && step === 0) { step = 1; apply(); openOverlay(path === "recorded" ? "fallback" : "live"); return; }
     if (step < S.steps.length - 1) { step++; apply(); }
     else if (cur < SLIDES.length - 1) go(cur + 1, 0);
   }
@@ -349,10 +388,12 @@ if (PRESENTER) {
     if (step > 0) { step--; apply(-1); }
     else if (cur > 0) go(cur - 1, SLIDES[cur - 1].steps.length - 1);
   }
+  const toDemo = () => { if (!isDemo(SLIDES[cur])) go(SLIDES.findIndex(isDemo), 1); else { step = 1; apply(); } };
   const cmds = {
     next, prev,
-    demo: () => { if (SLIDES[cur].id !== "demo") go(SLIDES.findIndex((x) => x.id === "demo"), 1); else { step = 1; apply(); } openOverlay("live"); },
-    fallback: () => { if (SLIDES[cur].id !== "demo") go(SLIDES.findIndex((x) => x.id === "demo"), 1); else { step = 1; apply(); } openOverlay("fallback"); },
+    demo: () => { toDemo(); openOverlay("live"); },
+    fallback: () => { toDemo(); openOverlay("fallback"); },
+    path: () => { path = path === "live" ? "recorded" : "live"; if (path === "live") armDemo(); broadcast(); },
     close: () => closeOverlay(false),
     black: () => stage.classList.toggle("blackout"),
   };
@@ -370,6 +411,7 @@ if (PRESENTER) {
     else if (k === "Home") go(0);
     else if (k === "End") go(SLIDES.length - 1);
     else if (/^[0-9]$/.test(k)) go(k === "0" ? 9 : Number(k) - 1);
+    else if (k === "m") cmds.path();
     else if (k === "f") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
     else if (k === "d") cmds.demo();
     else if (k === "r") cmds.fallback();
@@ -382,5 +424,9 @@ if (PRESENTER) {
   const m = /^#(\d+)(?:\.(\d+))?$/.exec(location.hash);
   if (m) { cur = Math.min(SLIDES.length - 1, Number(m[1]) - 1); step = Number(m[2] || 0); }
   requestAnimationFrame(() => { document.body.classList.add("ready"); apply(); });
-  window.STAGE = { go, next, prev, open: openOverlay, close: closeOverlay, state: () => ({ slide: cur + 1, step, overlay: overlayMode, demoArmed }), timing };
+  addEventListener("hashchange", () => {
+    const h = /^#(\d+)(?:\.(\d+))?$/.exec(location.hash);
+    if (h && (Number(h[1]) - 1 !== cur || Number(h[2] || 0) !== step)) go(Number(h[1]) - 1, Number(h[2] || 0));
+  });
+  window.STAGE = { go, next, prev, open: openOverlay, close: closeOverlay, state: () => ({ slide: cur + 1, step, overlay: overlayMode, demoArmed, path, deck: SLIDES.length }), timing };
 }
