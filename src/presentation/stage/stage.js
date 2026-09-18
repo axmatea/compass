@@ -177,6 +177,17 @@ const B = {
     return s;
   },
   cta() {
+    if (SLIDES === FIVE) {
+      // final scene: orb, big COMPASS, small QR. Nothing else.
+      const s = h("section", "slide s-end");
+      const qr = h("img", "end-qr");
+      qr.src = CONFIG.qr;
+      qr.alt = `QR code: ${CONFIG.domain}`;
+      const corner = h("div", "end-corner");
+      corner.append(qr, h("span", null, CONFIG.domain));
+      s.append(h("div", "end-mark", "COMPASS"), corner);
+      return s;
+    }
     const s = h("section", "slide s-cta");
     const qr = h("img", "qr rv");
     qr.src = CONFIG.qr;

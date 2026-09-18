@@ -188,3 +188,12 @@ body.presenter{cursor:auto;overflow:auto;background:#0b1014}
 .s-chain .node{width:500px}
 .s-chain .node-label{font-size:48px;white-space:nowrap;text-transform:none}
 .s-cta .domain.big{font-size:84px;color:var(--ink);letter-spacing:-.02em}
+
+/* ---------- five-scene final: orb + COMPASS + small QR ---------- */
+.stage[data-orb=end] .orb{opacity:1;transform:translate(800px,150px) scale(1.12)}
+.s-end .end-mark{position:absolute;left:0;right:0;top:560px;text-align:center;font-size:200px;font-weight:500;letter-spacing:.3em;padding-left:.3em;line-height:1;opacity:0;transform:translateY(30px);filter:blur(10px);transition:all .8s var(--ease) .35s}
+.s-end.is-active .end-mark{opacity:1;transform:none;filter:none}
+.s-end .end-corner{position:absolute;right:90px;bottom:80px;display:flex;flex-direction:column;align-items:center;gap:14px;opacity:0;transition:opacity .6s ease .9s}
+.s-end.is-active .end-corner{opacity:1}
+.s-end .end-qr{width:150px;height:150px;border-radius:12px}
+.s-end .end-corner span{font-size:22px;letter-spacing:.08em;color:var(--mute)}

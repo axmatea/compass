@@ -55,8 +55,8 @@ export const SLIDES = [
     flag: APP.verified ? null : "PROVISIONAL: Boson voice and GLM-5.3 on Nebius are verified in prod. ‘turned that request into the page’ is NOT true until Scene 3 is built.",
   },
   {
-    id: "cta", title: "COMPASS", orb: "cta", media: `QR → https://${CONFIG.domain}`,
-    motion: "Orb settles above the wordmark; domain and QR fade up. Step 2: ‘Thank you.’",
+    id: "cta", title: "COMPASS", orb: "end", media: `QR → https://${CONFIG.domain}`,
+    motion: "Orb settles large above a big COMPASS wordmark; a small QR fades in bottom right. Nothing else on screen.",
     trigger: "→ enters. → on ‘Thank you’.",
     steps: [
       { speech: "NAYL: “We’re COMPASS. Find us at mycompass.world.”" },
