@@ -35,24 +35,28 @@ export const SLIDES = [
     motion: "Orb breathes under ‘Actual application.’ Step 2: orb expands into the running product.",
     trigger: "→ opens the product (LIVE or RECORDED per path, M switches). PageDown / Back returns.",
     steps: [
-      { speech: "NAYL: “We’ve met some great people here. Let’s make a page to stay in touch.”" },
+      { speech: APP.verified
+        ? "NAYL: “We’ve met some great people here. Let’s make a page to stay in touch.”"
+        : "NAYL: “Let’s plan a dinner, then change our mind while it’s working.”" },
       {
         speech: APP.verified
           ? `NAYL (to COMPASS): “${APP.request}”\n[let it run, do not talk over it]\nVINCENT: “Here’s the page it just created.”`
-          : "[HOLD] Page generation is not in the product yet. Do NOT say the request and do NOT say ‘Here’s the page it just created’ until Orchestrator confirms a verified build.",
+          : "NAYL (to COMPASS): “Schedule dinner tomorrow at 7 and find an Italian restaurant.”\n[let it start searching]\nNAYL (to COMPASS): “Actually, make it 8. Somewhere near Palo Alto.”\n[let it run, do not talk over it]\nVINCENT: “It kept dinner, tomorrow and Italian, changed only the time, and rescoped the search. Restaurants come from OpenStreetMap. Nothing is booked.”",
         live: APP.measuredSeconds || 60,
       },
     ],
-    flag: APP.verified ? null : "SCENE 3 BLOCKED: no page-generation capability in main / feat/agent-core. Waiting on Orchestrator build confirmation.",
+    flag: APP.verified ? null : "Page generation is NOT implemented. Live path = the dinner correction in /demo. Never say it built a page.",
   },
   {
-    id: "chain", title: "Voice → Request → Generated page", orb: "corner", media: "none (HTML)",
+    id: "chain", title: APP.verified ? "Voice → Request → Generated page" : "Voice → Request → Updated plan", orb: "corner", media: "none (HTML)",
     motion: "Three nodes build left to right with provider labels under each.",
     trigger: "→ enters after the result is shown.",
     steps: [
-      { speech: "“Boson handled the voice. GLM on Nebius interpreted the request. Our application turned that request into the page you just opened. The important part isn’t the assistant saying ‘done.’ It’s having a result you can actually open and use.”" },
+      { speech: APP.verified
+        ? "“Boson handled the voice. GLM on Nebius interpreted the request. Our application turned that request into the page you just opened. The important part isn’t the assistant saying ‘done.’ It’s having a result you can actually open and use.”"
+        : "“Boson handled the voice. GLM on Nebius interpreted the correction. COMPASS patched only what changed and kept acting, no restart. The important part isn’t the assistant saying ‘done.’ It’s a plan that stays right while you change your mind.”" },
     ],
-    flag: APP.verified ? null : "PROVISIONAL: Boson voice and GLM-5.3 on Nebius are verified in prod. ‘turned that request into the page’ is NOT true until Scene 3 is built.",
+    flag: null,
   },
   {
     id: "cta", title: "COMPASS", orb: "end", media: `QR → https://${CONFIG.domain}`,

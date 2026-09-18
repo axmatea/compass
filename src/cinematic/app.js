@@ -22,7 +22,7 @@ const notes = [
  '7:00 PM is superseded, 8:00 PM becomes active, and Palo Alto is added.',
  'The search is rescoped, not restarted: an Italian table near Palo Alto for 8:00 PM.',
  'Speak the way plans actually happen. The footage is illustrative.',
- 'Try it live at /demo: say the plan, interrupt it, watch the plan update. Restaurant results are sample data.',
+ 'Try it live at /demo: say the plan, interrupt it, watch the plan update. Restaurants come from OpenStreetMap. Nothing is booked.',
  'COMPASS does not just answer. It adapts.'
 ];
 let starts = [], active = -1, position = 0, queued = false;

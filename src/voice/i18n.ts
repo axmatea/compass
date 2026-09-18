@@ -17,7 +17,7 @@ export const en = {
     interrupted: 'Listening to you.',
   },
   voiceSource: { boson: 'Voice · Boson Higgs', browser: 'Voice · Browser' } as Record<string, string>,
-  disclosure: { live: 'Live · Restaurant results are sample data', recorded: 'Replay of a recorded live session · Restaurant results are sample data' },
+  disclosure: { live: 'Live · Restaurants from OpenStreetMap · Nothing is booked', recorded: 'Replay of a recorded live session · Restaurant results are sample data' },
   talk: 'Talk', listening: 'Listening', interrupt: 'Interrupt', interruptTitle: 'Interrupt (Esc)',
   micTitle: 'Talk, and talk over COMPASS to interrupt', micUnsupported: 'Voice input is not supported in this browser',
   voiceOn: 'Voice on', voiceOff: 'Muted', voiceTitle: 'COMPASS speaks its replies', reset: 'Start over',

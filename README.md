@@ -1,67 +1,49 @@
 # COMPASS
 
-This revision separates the scrollable COMPASS website at `/` from the eight-scene presentation at `/present.html`. Existing `/#present` links remain compatible. Both use the dark sci-fi direction, adult heroine and luminous orb. The guided demo remains at `/demo.html?deck=0#demo`.
+A voice agent that adapts while acting. Say what you want, change your mind mid-task, and COMPASS updates only what changed instead of starting over.
 
-This homepage revision is local on `codex/compass-homepage`, not yet published. See [the shared product brief](docs/PRODUCT_BRIEF.md) for product intent, ownership and the implemented/concept boundary.
+- Website: https://mycompass.world
+- Live demo: https://mycompass.world/demo
+- Presentation: https://mycompass.world/present
+- Repository: https://github.com/axmatea/compass (public)
 
-- Website: https://compass-web-production-da39.up.railway.app/
-- Presentation: https://compass-web-production-da39.up.railway.app/#present
-- Repository: https://github.com/axmatea/compass (private)
+## What is implemented (deployed)
 
-## Develop and deploy
+- `/` website: opening screen plus a scroll story of one plan changing mid-sentence (illustrative footage).
+- `/demo` live agent. Voice or typed input. Every turn is reasoned by GLM-5.3 on Nebius through `/api/turn` (SSE, contract v1) and kept as structured intent state (task, date, time, cuisine, location).
+- Corrections mid-action: a follow-up like "Actually make it 8. Somewhere near Palo Alto." patches only the changed fields, marks the old value superseded, cancels the in-flight action and re-runs it with the new state.
+- Voice: Boson Higgs Realtime (speech in, speech out, barge-in) through a server-side WebSocket bridge `/api/voice/realtime`. The API key never reaches the browser. If Boson is unavailable the demo falls back to browser speech and says which voice is active.
+- `/present` stage presentation that embeds the live `/demo`.
+
+## Not implemented
+
+- Restaurant search is real but read-only: OpenStreetMap (Nominatim + Overpass), `server/tools/osm-restaurant-search.mjs`. Availability is not checked. Nothing is booked, reserved or sent. The offline replay (`?backend=mock`) uses sample data and is labelled as such.
+- Web page or website generation is not part of the deployed service.
+- No accounts, payments, calendar writes or cross-session memory.
+- Multilingual voice is not claimed.
+
+## Develop
 
 ```sh
 npm ci
-npm run dev
-npm run typecheck
-npm run build
-npm start
-```
-
-`npm start` serves the production build on http://127.0.0.1:8770/ (or PORT). Use a feature branch and review changes before merging to `main`. Railway is connected to `axmatea/compass`, branch `main`; it builds the Dockerfile and updates the existing public URL. No repository or service duplication is needed. The local `dist` folder is generated output, not editable source.
-
-## Source layout
-
-- `index.html`, `src/landing/`: scrollable website and prepared interaction.
-- `present.html`, `src/presentation/`: separate sci-fi presentation CSS, JavaScript and optional browser voice adapter.
-- `public/demo.html`: matching self-contained sci-fi guided demo.
-- Other React files in `src/`: preserved imported Higgsfield version, not the active root page.
-- `public/`: local images, fonts, captions, pitch notes, icons and original 60-second film.
-- `server.mjs`: Node static server, health endpoint and video range requests.
-- `Dockerfile`: build and production runtime.
-- `MIGRATION.md`: source provenance, changes and verification.
-
-## One source of truth
-
-GitHub is now the working source and Railway is the live host. There is no bidirectional sync with the Higgsfield editor. Later edits there will not automatically appear here. Import intentional future changes into this repository and deploy through main. Keep Higgsfield for creative assets or as an unchanged archive; this migration does not delete or redirect the old site.
-
-## Collaborator setup
-
-`victorfaren` has GitHub Write access; the collaborator account was verified as a Railway project Editor during the previous handoff. Clone the repository and work through branches using your own account. The owner adds project members through Settings → Members. No credentials should be shared in chat or committed; future provider secrets belong in Railway variables.
-
-## What is implemented
-
-Scrollable website, prepared correction example, eight-scene sci-fi presentation, animated orb, optional browser greeting, speaker notes, four scripted conversation paths, editable/downloadable next-step drafts, and the NYC film at /film.html.
-
-The greeting and guided replies are scripted. Open-ended voice AI, cross-session memory, interruption handling and external actions are not implemented. The optional browser speech features depend on browser support and permissions.
-
-## NYC product film
-
-The linked film player now uses `public/media/compass-film-nyc.mp4`: the 60-second,
-1920×1080, 24 fps remake. Its poster and English captions are versioned with the
-new story. The staged conversation moves from a deadline concern to upfront
-payment, ending with an unsent draft. The original film remains in Git history
-and at its original media path. Full production archives are kept outside this
-web repository.
-
-## Backend and realtime voice (local)
-
-```sh
-cp .env.example .env        # fill NEBIUS_API_KEY and BOSON_API_KEY (server-side only, never VITE_)
+cp .env.example .env        # NEBIUS_API_KEY, BOSON_API_KEY: server-side only, never VITE_
 npm run doctor              # presence check, never prints values
+npm run typecheck
+npm test                    # offline suite
 npm run build && npm run start:local   # http://localhost:8770
 ```
 
-- Talk to COMPASS: http://localhost:8770/api/voice/console (dev console; headphones give the cleanest barge-in).
-- Voice path: browser mic -> `/api/voice/realtime` -> Boson Higgs Realtime (voice `BOSON_VOICE`, default nora). Every user turn is reasoned by Nebius GLM-5.3 through `/api/turn` v1 state. Without `BOSON_API_KEY` the client falls back to browser speech.
-- Tests: `npm test` (offline), `npm run test:live` (GLM), `npm run probe:boson`, `npm run test:voice:live` (real Boson voice, incl. barge-in).
+Live checks (need keys): `npm run test:live` (GLM), `npm run probe:boson`, `npm run test:voice:live` (real Boson voice, incl. barge-in).
+
+## Source layout
+
+- `index.html`, `src/site/`, `src/cinematic/`: website and story.
+- `live.html`, `src/components/`, `src/voice/`: the `/demo` agent UI.
+- `present.html`, `src/presentation/stage/`: presentation.
+- `server.mjs`, `server/`: static server, `/healthz`, `/api/health`, `/api/turn`, voice bridge, intent state, tools.
+- `test/`: offline and live tests.
+- `boson-claude-cli-bridge/`: separate local prototype (Python, runs on a laptop with the Claude CLI). Not deployed and not part of the public demo.
+
+## Deploy
+
+GitHub `main` is the source. Railway (existing service `compass-web`) builds the `Dockerfile` on push to `main` and serves https://mycompass.world. Secrets live only in Railway variables.
