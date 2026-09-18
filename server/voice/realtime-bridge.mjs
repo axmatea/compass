@@ -174,9 +174,10 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
   function interrupt(reason) {
     const playing = isPlaying();
     const wasSpeaking = playing || speaking || Boolean(active && !active.pending && active.kind !== 'turn');
-    m.interruptAt = wasSpeaking ? now() : null;
-    m.flushAt = null;
     if (wasSpeaking) {
+      // Kept until the next COMPASS audio starts, so VAD-split follow-up speech does not erase it.
+      m.interruptAt = now();
+      m.flushAt = null;
       const itemId = playingItem || active?.itemId || null;
       client.sendJson({ type: 'audio.flush', itemId, reason });
       m.flushAt = now();
@@ -252,7 +253,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
         playback.set(e.item_id, { startAt, durMs: 0, truncated: false });
         playingItem = e.item_id;
       }
-      if (!speaking) { speaking = true; m.firstAudioAt = now(); setStatus(STATUS.SPEAKING); metrics({ kind: rec.kind }); }
+      if (!speaking) { speaking = true; m.firstAudioAt = now(); setStatus(STATUS.SPEAKING); metrics({ kind: rec.kind }); m.interruptAt = null; m.flushAt = null; }
       const buf = Buffer.from(e.delta, 'base64');
       const p = playback.get(e.item_id);
       if (p) { p.durMs += (buf.length / 2 / 24000) * 1000; schedulePlaybackEnd(); }

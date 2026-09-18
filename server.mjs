@@ -34,5 +34,6 @@ const server = createServer(async (req,res) => {
   const stream=createReadStream(file,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);
  }catch{if(!res.headersSent)res.writeHead(404);res.end('Not found');}
 });
+backend.attachVoice(server);
 server.listen(Number(process.env.PORT||8770),'0.0.0.0',()=>console.log('COMPASS ready'));
 process.on('SIGTERM',()=>server.close(()=>process.exit(0)));

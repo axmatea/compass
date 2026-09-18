@@ -9,6 +9,24 @@
 //   GET  /api/session/:id/events   -> SSE of all session events (all turns), for the live UI
 //   GET  /api/health               -> presence flags only, never secrets
 //   GET  /api/voice/providers      -> voice provider capabilities
+//   GET  /api/voice/client.js      -> browser voice client (Boson realtime, browser fallback)
+//   GET  /api/voice/pcm-worklet.js -> AudioWorklet (mic capture, playback with instant flush)
+//   GET  /api/voice/console        -> dev console to talk to COMPASS (not the product UI)
+//   WS   /api/voice/realtime       -> realtime voice bridge (server/voice/ws-server.mjs)
+import { readFileSync } from 'node:fs';
+
+const VOICE_ASSETS = {
+  '/api/voice/client.js': ['compass-voice.js', 'text/javascript; charset=utf-8'],
+  '/api/voice/pcm-worklet.js': ['pcm-worklet.js', 'text/javascript; charset=utf-8'],
+  '/api/voice/console': ['console.html', 'text/html; charset=utf-8'],
+};
+const assetCache = new Map();
+function voiceAsset(path) {
+  const spec = VOICE_ASSETS[path];
+  if (!spec) return null;
+  if (!assetCache.has(path)) assetCache.set(path, readFileSync(new URL(`./voice/browser/${spec[0]}`, import.meta.url)));
+  return { body: assetCache.get(path), type: spec[1] };
+}
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const MAX_BODY = 16 * 1024;
 const MAX_TEXT = 500;
@@ -64,6 +82,12 @@ export function createApiHandler({ runtime, health, voice, turnsPerMinute = 30, 
     const method = req.method;
     try {
       if (path === '/api/health' && method === 'GET') return send(res, 200, { ok: true, ...health() });
+
+      if (method === 'GET' && VOICE_ASSETS[path]) {
+        const a = voiceAsset(path);
+        res.writeHead(200, { 'Content-Type': a.type, 'Cache-Control': 'no-cache' });
+        return res.end(a.body);
+      }
 
       if (path === '/api/voice/providers' && method === 'GET') return send(res, 200, { providers: voice.list(), active: voice.activeName, fallback: voice.fallback });
 

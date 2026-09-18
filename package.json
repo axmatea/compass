@@ -14,7 +14,8 @@
     "start": "node server.mjs",
     "test": "node --test 'test/*.test.mjs'",
     "test:live": "node --env-file=.env --test 'test/live/*.test.mjs'",
-    "probe:nebius": "node --env-file=.env scripts/nebius-probe.mjs"
+    "probe:nebius": "node --env-file=.env scripts/nebius-probe.mjs",
+    "start:local": "node --env-file=.env server.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
