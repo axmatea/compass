@@ -25,3 +25,7 @@ No automatic two-way sync exists. Future changes ship from axmatea/compass main 
 - Guided demo correction preserves partnership and updates goal from leaving to redistributing work.
 
 - Migration fix: opening the presentation pauses the film, so its soundtrack cannot overlap browser narration.
+
+## Design correction
+
+User clarified that the intended active design is the dark sci-fi adult heroine and large orb, not the imported Higgsfield page. Restored that specific presentation and matching demo from3cb2d58 into editable source/public assets while keeping the new build system, server, video, GitHub integration and Railway service. Root and #present now use the sci-fi design. The earlier male-character film is available only as a clearly labelled archive in the demo.

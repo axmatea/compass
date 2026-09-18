@@ -1,6 +1,6 @@
 # COMPASS
 
-The editable COMPASS website and cinematic presentation, migrated from Higgsfield to Railway.
+The active COMPASS design is the dark sci-fi presentation with the adult heroine and luminous animated orb. The root page and #present use this version; /demo.html?deck=0#demo opens the matching guided demo.
 
 - Website: https://compass-web-production-da39.up.railway.app/
 - Presentation: https://compass-web-production-da39.up.railway.app/#present
@@ -20,7 +20,9 @@ npm start
 
 ## Source layout
 
-- `src/`: editable React/TypeScript product, presentation and guided conversation components.
+- `src/presentation/`: active sci-fi presentation CSS, JavaScript and optional browser voice adapter.
+- `public/demo.html`: matching self-contained sci-fi guided demo.
+- Other React files in `src/`: preserved imported Higgsfield version, not the active root page.
 - `public/`: local images, fonts, captions, pitch notes, icons and original 60-second film.
 - `server.mjs`: Node static server, health endpoint and video range requests.
 - `Dockerfile`: build and production runtime.
