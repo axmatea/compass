@@ -2,7 +2,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY index.html present.html vite.config.ts tsconfig.json ./
+COPY *.html vite.config.ts tsconfig.json ./
 COPY src ./src
 COPY public ./public
 RUN npm run build
