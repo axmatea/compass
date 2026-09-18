@@ -25,7 +25,6 @@ export default defineConfig({
         website: fileURLToPath(new URL("./index.html", import.meta.url)),
         presentation: fileURLToPath(new URL("./present.html", import.meta.url)),
         live: fileURLToPath(new URL("./live.html", import.meta.url)),
-        hero: fileURLToPath(new URL("./hero.html", import.meta.url)),
       },
     },
   },

@@ -1,0 +1,37 @@
+/* Website polish layer (owner: FRONTEND). Loads after src/cinematic/styles.css (VIDEO-owned, not edited).
+   Refines hierarchy and removes chrome; no new visual language. */
+
+/* One idea per scene: secondary labels become assistive-only */
+#correction-note{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.scroll-hint{opacity:.6}
+
+/* Acting: a single calm line */
+.context-composition.acting-only{grid-template-columns:1fr;max-width:420px}
+.context-composition.acting-only strong{font-size:clamp(22px,2vw,28px)}
+
+/* The added constraint is a change: it earns the gold */
+.time-plus{color:#dcbf7c;font-size:clamp(18px,1.6vw,22px);letter-spacing:-.01em}
+
+/* Primary CTA: the one thing to do, clearer than every other control */
+.primary[data-to-demo]{border-color:#d9e8f48f;background:#e7eff612;color:#f4f9fc;transition:background .25s,border-color .25s,box-shadow .35s,transform .25s}
+.primary[data-to-demo]:hover{background:#d2eaff22;border-color:#e6f3fbd0;box-shadow:0 0 0 1px #d9e8f41f,0 0 40px #8bc8ee2e;transform:translateY(-1px)}
+.primary[data-to-demo]:focus-visible{outline:2px solid #bedced;outline-offset:4px}
+
+/* Chrome recedes until wanted */
+.story-controls{opacity:.62;transition:opacity .3s}
+.story-controls:hover,.story-controls:focus-within{opacity:1}
+.concept{opacity:.8}
+
+/* Film slot: a quiet vertical frame beside the invitation. Hidden unless an approved film exists. */
+.film-slot[hidden]{display:none}
+.film-slot{position:absolute;z-index:2;right:max(6vw,calc((100vw - 1400px)/2));top:50%;transform:translateY(-50%);height:min(74vh,760px);aspect-ratio:var(--film-ratio,9/16);margin:0;border-radius:22px;overflow:hidden;background:#070d12;border:1px solid #d7f2ff26;box-shadow:0 40px 120px -40px #000,0 0 60px #8bc8ee14;opacity:0;transition:opacity .8s ease}
+.film-slot.is-ready,.film-slot:has(video[poster]){opacity:1}
+.film-slot video{width:100%;height:100%;object-fit:cover;display:block;background:#070d12}
+.scene-product.has-film .scene-copy{max-width:min(46vw,620px)}
+
+@media(max-width:700px){
+  .film-slot{position:relative;right:auto;top:auto;transform:none;height:auto;width:min(64vw,300px);margin:92px auto 0;border-radius:18px}
+  .scene-product.has-film{flex-direction:column;justify-content:flex-start}
+  .scene-product.has-film .scene-copy{max-width:none;margin-top:26px}
+}
+@media(prefers-reduced-motion:reduce){.film-slot{transition:none}}

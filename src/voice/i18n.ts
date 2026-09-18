@@ -16,6 +16,7 @@ export const en = {
     acting: 'Working on it. Interrupt any time.',
     interrupted: 'Listening to you.',
   },
+  voiceSource: { boson: 'Voice · Boson Higgs', browser: 'Voice · Browser' } as Record<string, string>,
   disclosure: { live: 'Live · Restaurant results are sample data', recorded: 'Replay of a recorded live session · Restaurant results are sample data' },
   talk: 'Talk', listening: 'Listening', interrupt: 'Interrupt', interruptTitle: 'Interrupt (Esc)',
   micTitle: 'Talk, and talk over COMPASS to interrupt', micUnsupported: 'Voice input is not supported in this browser',
@@ -37,6 +38,7 @@ export const en = {
     noVoice: 'Voice input is not available in this browser. Type instead.',
     unreachable: 'Live backend unreachable. This turn replayed the recorded session.',
     failed: 'That turn failed. Try again.',
+    voiceClosed: 'Voice connection closed. Tap Talk to reconnect.',
   },
 }
 export type Strings = typeof en
