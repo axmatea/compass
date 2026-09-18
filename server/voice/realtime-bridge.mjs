@@ -33,7 +33,9 @@ export const STATUS = Object.freeze({
 
 export function createRealtimeBridge({ client, runtime, connectUpstream, voice = 'default', turnDetection = 'semantic_vad', sessionId, now = () => performance.now(), logger = console }) {
   // client: { sendJson(obj), sendBinary(buf), close(code, reason) }
-  const session = (sessionId && runtime.getSession(sessionId)) || runtime.createSession();
+  const known = sessionId && runtime.getSession(sessionId);
+  const session = known || runtime.createSession();
+  const sessionReset = Boolean(sessionId) && !known;
   const sid = session.id;
   let upstream = null;
   let closed = false;
@@ -201,7 +203,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
 
   // ---------- upstream events ----------
   function wireUpstream(up) {
-    up.on('session.created', () => client.sendJson({ type: 'ready', sessionId: sid, provider: 'boson', voice, sampleRate: 24000 }));
+    up.on('session.created', () => client.sendJson({ type: 'ready', sessionId: sid, provider: 'boson', voice, sampleRate: 24000, ...(sessionReset ? { sessionReset: true } : {}) }));
     up.on('input_audio_buffer.speech_started', (e) => { m.speechStartedAt = now(); m.firstAudioAt = null; userSpeaking = true; interrupt('speech_started'); if (e.item_id) m.userItemId = e.item_id; });
     up.on('input_audio_buffer.speech_stopped', () => { m.speechStoppedAt = now(); userSpeaking = false; awaitingTurn = true; setStatus(STATUS.THINKING); });
     up.on('conversation.item.input_audio_transcription.completed', (e) => {

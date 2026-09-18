@@ -113,3 +113,19 @@ test('missing Nebius key returns 503 with fallback reply', async () => {
   assert.equal(res.status, 503);
   assert.match((await res.json()).reply, /didn't catch/);
 });
+
+test('F1: unknown sessionId -> fresh session with sessionReset:true (JSON and SSE)', async () => {
+  const r = await (await post('/api/turn', { sessionId: 's_deadbeef', text: T1 })).json();
+  assert.equal(r.sessionReset, true);
+  assert.notEqual(r.sessionId, 's_deadbeef');
+  assert.equal(r.state.version, 1);
+  const again = await (await post('/api/turn', { sessionId: r.sessionId, text: T2 })).json();
+  assert.equal('sessionReset' in again, false, 'known session: no flag');
+  assert.equal(again.state.intent.time, '20:00');
+  const fresh = await (await post('/api/turn', { text: T1 })).json();
+  assert.equal('sessionReset' in fresh, false, 'no sessionId sent: new session is not a reset');
+  const sse = await (await post('/api/turn', { sessionId: 'gone', text: T1 }, { Accept: 'text/event-stream' })).text();
+  assert.match(sse, /^event: session_reset$/m);
+  const result = JSON.parse(/event: result\ndata: (.*)/.exec(sse)[1]);
+  assert.equal(result.sessionReset, true);
+});

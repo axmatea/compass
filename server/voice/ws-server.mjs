@@ -42,7 +42,7 @@ export function attachVoiceServer(httpServer, { runtime, config, connectUpstream
     const bridge = createRealtimeBridge({
       client,
       runtime,
-      sessionId: sid && ID_RE.test(sid) ? sid : undefined,
+      sessionId: sid ? (ID_RE.test(sid) ? sid : 'invalid') : undefined, // 'invalid' -> reset flagged
       voice: config.boson.voice,
       turnDetection: config.boson.turnDetection,
       connectUpstream: connectUpstream || (() => connectBoson({ apiKey: config.boson.apiKey, url: config.boson.realtimeUrl })),

@@ -50,3 +50,15 @@ new story. The staged conversation moves from a deadline concern to upfront
 payment, ending with an unsent draft. The original film remains in Git history
 and at its original media path. Full production archives are kept outside this
 web repository.
+
+## Backend and realtime voice (local)
+
+```sh
+cp .env.example .env        # fill NEBIUS_API_KEY and BOSON_API_KEY (server-side only, never VITE_)
+npm run doctor              # presence check, never prints values
+npm run build && npm run start:local   # http://localhost:8770
+```
+
+- Talk to COMPASS: http://localhost:8770/api/voice/console (dev console; headphones give the cleanest barge-in).
+- Voice path: browser mic -> `/api/voice/realtime` -> Boson Higgs Realtime (voice `BOSON_VOICE`, default nora). Every user turn is reasoned by Nebius GLM-5.3 through `/api/turn` v1 state. Without `BOSON_API_KEY` the client falls back to browser speech.
+- Tests: `npm test` (offline), `npm run test:live` (GLM), `npm run probe:boson`, `npm run test:voice:live` (real Boson voice, incl. barge-in).

@@ -3,6 +3,7 @@
 // Contract (COMPASS_MASTER section 5, frozen once agreed):
 //   POST /api/turn {sessionId?, text}
 //     Accept: application/json  -> {sessionId, turnId, state, patch, reply, toolResult, superseded, events}
+//                                  (+ sessionReset:true only when the sent sessionId was unknown; SSE: event session_reset)
 //     Accept: text/event-stream -> SSE, one event per agent event, then `event: result` with the JSON above
 //   POST /api/session              -> {sessionId, state}
 //   GET  /api/session/:id          -> {state}
@@ -116,21 +117,28 @@ export function createApiHandler({ runtime, health, voice, turnsPerMinute = 30, 
         const text = typeof body.text === 'string' ? body.text.trim() : '';
         if (!text) return send(res, 400, { error: 'text_required' });
         if (text.length > MAX_TEXT) return send(res, 400, { error: 'text_too_long', max: MAX_TEXT });
-        let sessionId = typeof body.sessionId === 'string' && ID_RE.test(body.sessionId) ? body.sessionId : null;
-        if (!sessionId || !runtime.getSession(sessionId)) sessionId = runtime.createSession().id;
+        // F1: a client that sends a sessionId we no longer know (expired, server restarted,
+        // redeploy mid-demo) gets a fresh session AND an explicit sessionReset:true so the UI
+        // can say the previous plan was lost instead of silently starting over.
+        const requested = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
+        let sessionId = requested && ID_RE.test(requested) && runtime.getSession(requested) ? requested : null;
+        const sessionReset = Boolean(requested) && !sessionId;
+        if (!sessionId) sessionId = runtime.createSession().id;
+        const resetInfo = sessionReset ? { sessionReset: true } : {};
 
         const wantsSse = /text\/event-stream/i.test(req.headers.accept || '');
         if (wantsSse) {
           const write = openSse(res);
+          if (sessionReset) write('session_reset', { type: 'session_reset', sessionId, reason: 'unknown_session' });
           const result = await runtime.runTurn(sessionId, text, { onEvent: (ev) => write(ev.type, ev) });
           const { events, ...rest } = result;
-          write('result', { ...rest, state: publicState(rest.state) });
+          write('result', { ...rest, ...resetInfo, state: publicState(rest.state) });
           res.end();
           return;
         }
         const result = await runtime.runTurn(sessionId, text);
         const status = result.error === 'not_configured' ? 503 : 200;
-        return send(res, status, { ...result, state: publicState(result.state) });
+        return send(res, status, { ...result, ...resetInfo, state: publicState(result.state) });
       }
 
       if (path.startsWith('/api/voice/')) return send(res, 501, { error: 'voice_endpoint_not_implemented', provider: voice.activeName });
