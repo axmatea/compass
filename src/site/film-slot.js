@@ -1,6 +1,6 @@
 /**
- * Film slot (owner: FRONTEND). The VIDEO agent delivers the final film by dropping a manifest,
- * no site change needed:
+ * Film slot (owner: FRONTEND). The VIDEO agent delivers the final film by dropping a manifest
+ * and setting data-manifest="/media/film/film.json" on #film-slot in index.html:
  *   public/media/film/film.json = { "approved": true, "src": "/media/film/compass.mp4",
  *     "poster": "/media/film/poster.jpg", "captions": "/media/film/compass.en.vtt",
  *     "width": 1080, "height": 1920, "title": "COMPASS" }
@@ -12,7 +12,9 @@ const scene = slot?.closest('.scene')
 
 async function manifest() {
   try {
-    const r = await fetch('/media/film/film.json', { cache: 'no-store' })
+    const url = slot.dataset.manifest
+    if (!url) return null // No film announced yet: make no request, keep the console clean.
+    const r = await fetch(url, { cache: 'no-store' })
     if (!r.ok) return null
     const m = await r.json()
     return m && m.approved === true && typeof m.src === 'string' ? m : null
