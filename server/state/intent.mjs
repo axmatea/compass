@@ -34,7 +34,11 @@ export function createState(sessionId) {
 
 const EVENING = /dinner|supper|evening|drinks|night|date/i;
 
-/** Normalize to 24h "HH:MM". Bare hours 1-11 for evening tasks resolve to PM. */
+/**
+ * Normalize to 24h "HH:MM". Bare hours 1-11 ("7", "7:30") for evening tasks resolve to PM.
+ * A zero-padded 24h value ("08:00") is already unambiguous and is never shifted:
+ * the interpreter emits it when the user said "8 in the morning".
+ */
 export function normalizeTime(raw, { task } = {}) {
   if (raw == null) return null;
   const s = String(raw).trim().toLowerCase().replace(/\./g, '');
@@ -48,7 +52,7 @@ export function normalizeTime(raw, { task } = {}) {
   if (h > 23 || min > 59) return null;
   if (mer === 'p' && h < 12) h += 12;
   else if (mer === 'a' && h === 12) h = 0;
-  else if (!mer && h >= 1 && h <= 11 && EVENING.test(task || '')) h += 12;
+  else if (!mer && h >= 1 && h <= 11 && !/^0\d/.test(m[1]) && EVENING.test(task || '')) h += 12;
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 

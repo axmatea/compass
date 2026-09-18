@@ -79,6 +79,7 @@ test('dinner by voice: barge-in during playback flushes audio, supersedes 7pm, s
   up.emit({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
   const flush = client.json.find((j) => j.type === 'audio.flush');
   assert.ok(flush, 'audio.flush sent while playback in progress');
+  assert.ok(client.json.some((j) => j.type === 'response.stale'), 'old response explicitly marked stale');
   assert.equal(flush.itemId, firstItem);
   assert.equal(statuses(client).at(-1), 'INTERRUPTED');
   const trunc = up.sent.find((e) => e.type === 'conversation.item.truncate');
@@ -142,4 +143,71 @@ test('WebSocket endpoint rejects cross-origin browsers', async () => {
   const err = await new Promise((r) => { ws.on('error', () => r('rejected')); ws.on('open', () => r('opened')); });
   http.close();
   assert.equal(err, 'rejected');
+});
+
+function r4Setup({ sideTranscript }) {
+  const { runtime } = makeRuntime({ toolDelayMs: 50 });
+  const up = fakeUpstream();
+  const client = fakeClient();
+  autoSpeak(up, { speechMs: 300 });
+  const sides = [];
+  const connectUpstream = async () => {
+    if (!sides.length && !up.started) { up.started = true; return up; }
+    const side = fakeUpstream();
+    let bytes = 0;
+    side.onSend = (ev) => {
+      if (ev.type === 'input_audio_buffer.append') bytes += Buffer.from(ev.audio, 'base64').length;
+      if (ev.type === 'input_audio_buffer.append' && !side.fired && sideTranscript) {
+        side.fired = true;
+        setTimeout(() => side.emit({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'x', transcript: sideTranscript }), 20);
+      }
+    };
+    side.bytes = () => bytes;
+    sides.push(side);
+    return side;
+  };
+  const bridge = createRealtimeBridge({ client, runtime, connectUpstream, voice: 'nora', logger: { error() {} }, fragmentRecoverMs: 100 });
+  return { runtime, up, client, sides, bridge };
+}
+
+test('R4: a fragment Boson never turns into compass_turn is re-heard on a side session and reaches GLM once', async () => {
+  const { runtime, up, client, sides, bridge } = r4Setup({ sideTranscript: T2 });
+  await bridge.start();
+  up.emit({ type: 'session.created', session: {} });
+  // 4 s of mic audio flows through the bridge (offsets are relative to this stream).
+  for (let i = 0; i < 100; i++) bridge.onClientAudio(Buffer.alloc(1920, i % 7));
+  up.emit({ type: 'input_audio_buffer.speech_started', item_id: 'u1', audio_start_ms: 0 });
+  userTurn(up, T1);
+  await sleep(400);
+  // Fragment 2 (2.0-3.5 s): speech detected, but no transcription and no compass_turn from Boson.
+  up.emit({ type: 'input_audio_buffer.speech_started', item_id: 'u2', audio_start_ms: 2000 });
+  up.emit({ type: 'input_audio_buffer.speech_stopped', item_id: 'u2', audio_end_ms: 3500 });
+  await sleep(600);
+  assert.equal(sides.length, 1, 'one side session');
+  const heardMs = sides[0].bytes() / 48;
+  assert.ok(heardMs >= 1500 + 1000 && heardMs <= 1900 + 1000 + 1, `side session got the fragment (+1 s silence), got ${heardMs} ms`);
+  const st = runtime.getSession(bridge.sessionId).state;
+  assert.equal(st.intent.time, '20:00');
+  assert.equal(st.intent.location, 'Palo Alto');
+  assert.ok(client.json.some((j) => j.type === 'compass' && j.event.stage === 'fragment_recovered' && j.event.via === 'rehear'));
+  // A late compass_turn for the same fragment must not run a second GLM turn.
+  const turnsBefore = st.history.length;
+  up.emit({ type: 'response.function_call_arguments.done', response_id: up.id('resp'), name: 'compass_turn', call_id: 'late', arguments: JSON.stringify({ utterance: T2 }) });
+  await sleep(100);
+  assert.equal(runtime.getSession(bridge.sessionId).state.history.length, turnsBefore);
+  bridge.close?.();
+});
+
+test('R4: a fragment that cannot be recovered is never silent: COMPASS asks to repeat', async () => {
+  const { up, client, sides, bridge } = r4Setup({ sideTranscript: null });
+  await bridge.start();
+  up.emit({ type: 'session.created', session: {} });
+  up.emit({ type: 'input_audio_buffer.speech_started', item_id: 'u9', audio_start_ms: 0 });
+  up.emit({ type: 'input_audio_buffer.speech_stopped', item_id: 'u9', audio_end_ms: 900 });
+  await sleep(300);
+  assert.equal(sides.length, 0, 'no audio buffered -> no side session');
+  assert.ok(client.json.some((j) => j.type === 'compass' && j.event.stage === 'fragment_lost'));
+  const spoken = up.sent.filter((e) => e.type === 'conversation.item.create' && e.item.type === 'function_call_output').map((e) => JSON.parse(e.item.output).say);
+  assert.ok(spoken.some((x) => /didn't catch that/.test(x)), `asked to repeat: ${spoken}`);
+  bridge.close?.();
 });

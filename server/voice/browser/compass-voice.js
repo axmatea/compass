@@ -77,6 +77,7 @@ export function createCompassVoice(opts = {}) {
         else if (m.type === 'metrics') onMetrics({ source: 'server', ...m });
         else if (m.type === 'audio.start') { currentItem = m.itemId; items.set(m.itemId, { start: enqueued, len: 0 }); }
         else if (m.type === 'audio.flush') { flushRequestedAt = performance.now(); player.port.postMessage({ type: 'flush' }); enqueued = 0; items.clear(); }
+        else if (m.type === 'response.stale') onEvent({ type: 'response_stale', itemId: m.itemId, turnId: m.turnId, reason: m.reason });
         else if (m.type === 'error') onError(m);
       };
       ws.onclose = (e) => { clearTimeout(timer); if (!ready) reject(Object.assign(new Error(e.reason || 'closed'), { code: e.code })); else { onError({ code: 'voice_closed', message: `closed ${e.code}` }); status('IDLE'); } };

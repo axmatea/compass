@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { createCompassBackend } from '../server/app.mjs';
 
 const TOOL_DELAY = 2500;
-const backend = createCompassBackend({ env: { ...process.env, MOCK_TOOL_DELAY_MS: String(TOOL_DELAY) } });
+const backend = createCompassBackend({ env: { ...process.env, COMPASS_TOOLS: 'mock', MOCK_TOOL_DELAY_MS: String(TOOL_DELAY) } });
 if (!backend.config.nebius.configured) throw new Error('NEBIUS_API_KEY not set');
 const server = createServer((req, res) => backend.handleApi(req, res));
 await new Promise((r) => server.listen(0, '127.0.0.1', r));

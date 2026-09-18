@@ -30,12 +30,38 @@ await new Promise((r) => http.listen(0, '127.0.0.1', r));
 const port = http.address().port;
 setTimeout(() => { report('hard timeout'); process.exit(3); }, 150_000);
 
-const LINES = {
-  T1: 'Schedule dinner tomorrow at 7 and find an Italian restaurant.',
-  T2: 'Actually make it 8. Somewhere near Palo Alto.',
-  T3: 'Can we change it for next week?',
-  T4: 'Actually, not next week. The week after next.',
+// SCENARIO=question (default) | move | ru
+const SCENARIOS = {
+  question: {
+    T1: 'Schedule dinner tomorrow at 7 and find an Italian restaurant.',
+    T2: 'Actually make it 8. Somewhere near Palo Alto.',
+    T3: 'Can we change it for next week?',
+    T4: 'Actually, not next week. The week after next.',
+  },
+  move: {
+    T1: 'Schedule dinner tomorrow at 7 and find an Italian restaurant.',
+    T2: 'Actually make it 8. Somewhere near Palo Alto.',
+    T3: 'Move it to next week.',
+    T4: 'Actually, not next week. The week after next.',
+  },
+  // R4: T2 arrives as two fragments; the second overlaps COMPASS's reply to the first.
+  split: {
+    T1: 'Schedule dinner tomorrow at 7 and find an Italian restaurant.',
+    T2a: 'Actually, make it 8.',
+    T2b: 'Somewhere near Palo Alto.',
+    T3: 'Move it to next week.',
+    T4: 'Actually, not next week. The week after next.',
+  },
+  ru: {
+    T1: 'Запланируй ужин завтра в семь и найди итальянский ресторан.',
+    T2: 'Нет, лучше в восемь. Где-нибудь рядом с Пало-Альто.',
+    T3: 'Перенеси на следующую неделю.',
+    T4: 'Нет, не на следующую неделю, а через две недели.',
+  },
 };
+const SCENARIO = process.env.SCENARIO || 'question';
+const LINES = SCENARIOS[SCENARIO];
+if (!LINES) { console.log('unknown SCENARIO'); process.exit(2); }
 // User lines are synthesized once and cached (TTS is rate limited).
 const CACHE = process.env.USER_LINES_CACHE || '.cache/user-lines';
 mkdirSync(CACHE, { recursive: true });
@@ -55,6 +81,7 @@ const statuses = [];
 let current = null;        // { itemId, startedAt, bytes }
 const items = new Map();   // itemId -> { bytes, afterFlushBytes, flushed }
 let flushes = 0;
+const stale = [];
 ws.on('message', (data, isBinary) => {
   if (isBinary) {
     if (current) { current.bytes += data.length; const it = items.get(current.itemId); it.bytes += data.length; if (it.flushed) it.afterFlushBytes += data.length; }
@@ -75,8 +102,9 @@ ws.on('message', (data, isBinary) => {
     current = null;
   }
   if (m.type === 'audio.end') current = null;
+  if (m.type === 'response.stale') stale.push({ t: t(), itemId: m.itemId, reason: m.reason });
   if (m.type !== 'compass') log.push({ t: t(), ...m, ...(m.type === 'compass' ? {} : {}) });
-  else if (['state_patch', 'action_invalidated', 'tool_call', 'tool_result', 'say'].includes(m.event.type)) log.push({ t: t(), type: `compass.${m.event.type}`, turnId: m.event.turnId, text: m.event.text, changed: m.event.changed, intent: m.event.intent });
+  else if (['state_patch', 'action_invalidated', 'tool_call', 'tool_result', 'say'].includes(m.event.type)) log.push({ t: t(), type: `compass.${m.event.type}`, turnId: m.event.turnId, text: m.event.text, final: m.event.final, changed: m.event.changed, intent: m.event.intent });
 });
 await new Promise((r, j) => { ws.once('open', r); ws.once('error', j); });
 await waitFor(() => log.some((l) => l.type === 'ready'), 15000, 'ready');
@@ -106,19 +134,29 @@ try {
   say('T1');
   await waitFor(() => lastStatus() === 'SPEAKING', Number(process.env.T1_WAIT || 30000), 'COMPASS speaking after T1');
   await new Promise((r) => setTimeout(r, 700)); // let it talk a bit, then interrupt
-  say('T2');
+  if (LINES.T2) say('T2');
+  else {
+    const seen = statuses.length;
+    say('T2a');
+    // Fragment 2 starts the moment COMPASS begins answering fragment 1 (overlap), or after SPLIT_GAP_MS.
+    await waitFor(() => statuses.slice(seen).some((x) => x.s === 'SPEAKING') || false, Number(process.env.SPLIT_GAP_MS || 15000), 'COMPASS answering fragment 1').catch(() => {});
+    say('T2b');
+  }
   await waitFor(() => log.some((l) => l.type === 'compass.state_patch' && l.intent?.location), 30000, 'state patch with location');
   await waitFor(() => { const s = backend.runtime.getSession(sessionId())?.state; return s && s.actions.some((a) => a.status === 'done' && a.args.location); }, 30000, 'rescoped search done');
   await waitFor(() => lastStatus() === 'LISTENING', 30000, 'back to listening');
   const afterA = structuredClone(backend.runtime.getSession(sessionId()).state);
 
   // Scenario B: conversational date correction.
+  const turnsSeen = () => new Set(log.filter((l) => l.type === 'compass.say' && l.final).map((l) => l.turnId)).size;
+  let n = turnsSeen();
   say('T3');
-  await waitFor(() => backend.runtime.getSession(sessionId())?.state.history.some((h) => /next week/i.test(h.text || '')), 30000, 'T3 turn');
+  await waitFor(() => turnsSeen() > n, 30000, 'T3 turn');
   await waitFor(() => lastStatus() === 'SPEAKING' || lastStatus() === 'LISTENING', 30000, 'T3 reply');
   await new Promise((r) => setTimeout(r, 400));
+  n = turnsSeen();
   say('T4');
-  await waitFor(() => backend.runtime.getSession(sessionId())?.state.history.some((h) => /week after next/i.test(h.text || '')), 30000, 'T4 turn');
+  await waitFor(() => turnsSeen() > n, 30000, 'T4 turn');
   await waitFor(() => lastStatus() === 'LISTENING' && !queue.length, 40000, 'final listening');
   report(null, afterA);
 } catch (e) { error = e.message; report(error); }
@@ -129,8 +167,11 @@ function report(err, afterA) {
   const st = backend.runtime.getSession(sessionId())?.state;
   console.log(JSON.stringify({
     error: err,
+    scenario: SCENARIO,
+    stale,
+    assistantTranscripts: upstreamLog.filter((u) => u.type === 'response.output_audio_transcript.done').map((u) => u.transcript),
     afterDinner: afterA && { intent: afterA.intent, version: afterA.version, actions: afterA.actions.map((a) => `${a.status}:${a.args.time}@${a.args.location}`) },
-    final: st && { intent: st.intent, version: st.version, history: st.history.map((h) => ({ v: h.version, text: h.text, changes: h.patch.map((p) => `${p.field}:${p.from}->${p.to}`) })) },
+    final: st && { intent: st.intent, version: st.version, actions: st.actions.map((a) => `${a.status}:${JSON.stringify(a.args)}${a.error ? ' ' + a.error : ''}${a.result?.via ? ' via ' + a.result.via : ''}`), history: st.history.map((h) => ({ v: h.version, text: h.text, changes: h.patch.map((p) => `${p.field}:${p.from}->${p.to}`) })) },
     flushes,
     itemsAudio: [...items.entries()].map(([id, v]) => ({ id: id.slice(-6), sec: +(v.bytes / 48000).toFixed(2), flushed: v.flushed, afterFlushSec: +(v.afterFlushBytes / 48000).toFixed(2), startT: v.startT })),
     statuses: statuses.map((s) => `${s.t}:${s.s}`).join(' '),
