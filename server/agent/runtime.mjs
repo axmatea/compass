@@ -8,21 +8,10 @@
 import { randomUUID } from 'node:crypto';
 import { createState, applyUpdate, addAction, updateAction, invalidateActions, findReusableAction } from '../state/intent.mjs';
 import { missingFields } from '../tools/registry.mjs';
-import { formatTime12 } from '../tools/mock-restaurant-search.mjs';
+import { detectLang, matchesLang, describeChanges, t as tr } from '../i18n/lang.mjs';
 
+export { describeChanges };
 const shortId = (p) => `${p}_${randomUUID().slice(0, 8)}`;
-const FALLBACK_REPLY = "Sorry, I didn't catch that. Could you say it again?";
-
-export function describeChanges(patch) {
-  const parts = [];
-  for (const p of patch) {
-    if (p.status !== 'active' || p.change !== 'updated') continue;
-    if (p.field === 'time') parts.push(`Moved to ${formatTime12(p.to)}.`);
-    else if (p.field === 'date') parts.push(`Moved to ${p.to}.`);
-    else parts.push(`${p.field.replace('_', ' ')} changed to ${p.to}.`.replace(/^\w/, (c) => c.toUpperCase()));
-  }
-  return parts.join(' ');
-}
 
 export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_000, maxSessions = 500, now = () => Date.now() }) {
   const sessions = new Map();
@@ -35,7 +24,7 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
 
   function createSession(id = shortId('s')) {
     sweep();
-    const s = { id, state: createState(id), lock: Promise.resolve(), controllers: new Map(), inflight: new Map(), listeners: new Set(), lastSeen: now() };
+    const s = { id, state: createState(id), lock: Promise.resolve(), controllers: new Map(), inflight: new Map(), listeners: new Set(), pendingTools: new Set(), lastSeen: now() };
     sessions.set(id, s);
     return s;
   }
@@ -95,6 +84,7 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
   }
 
   async function runTurn(sessionId, text, { onEvent, signal, turnId: presetTurnId } = {}) {
+    const lang = detectLang(text);
     const session = getSession(sessionId) || createSession(sessionId || undefined);
     const turnId = presetTurnId || shortId('t');
     const events = [];
@@ -117,13 +107,13 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
 
         let interp;
         try {
-          interp = await interpreter.interpret({ state: session.state, text, tools: tools.describe(), signal });
+          interp = await interpreter.interpret({ state: session.state, text, lang, tools: tools.describe(), signal });
         } catch (err) {
           refreshStatus(session);
           emit(session, 'error', { turnId, code: err.code || 'interpret_failed', message: 'Could not interpret the request' });
-          emit(session, 'say', { turnId, text: FALLBACK_REPLY, final: true });
+          emit(session, 'say', { turnId, text: tr(lang).fallback, final: true });
           emit(session, 'done', { turnId });
-          return { sessionId: session.id, turnId, state: session.state, patch: [], reply: FALLBACK_REPLY, toolResult: null, error: err.code || 'interpret_failed', events };
+          return { sessionId: session.id, turnId, state: session.state, patch: [], reply: tr(lang).fallback, toolResult: null, error: err.code || 'interpret_failed', events };
         }
 
         const upd = applyUpdate(session.state, interp, { turnId, text });
@@ -144,7 +134,9 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
           }
         }
 
-        const wanted = new Set(replan);
+        const waiting = new Set();
+        // Tools the user asked for earlier that were waiting for a field stay wanted until they can run.
+        const wanted = new Set([...replan, ...session.pendingTools]);
         if (interp.tool) {
           if (tools.get(interp.tool)) wanted.add(interp.tool);
           else emit(session, 'error', { turnId, code: 'unknown_tool', message: `Model requested unknown tool ${interp.tool}` });
@@ -153,7 +145,8 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         for (const name of wanted) {
           const tool = tools.get(name);
           const missing = missingFields(tool, session.state.intent);
-          if (missing.length) { emit(session, 'reasoning_status', { turnId, stage: 'waiting_for_fields', tool: name, missing }); continue; }
+          if (missing.length) { missing.forEach((f) => waiting.add(f)); session.pendingTools.add(name); emit(session, 'reasoning_status', { turnId, stage: 'waiting_for_fields', tool: name, missing }); continue; }
+          session.pendingTools.delete(name);
           const args = tool.argsFromIntent(session.state.intent);
           const existing = findReusableAction(session.state, name, args);
           planned.push(existing ? reuseAction(session, existing) : startAction(session, tool, args, turnId));
@@ -162,6 +155,9 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
 
         refreshStatus(session);
         ack = interp.reply;
+        // GLM sometimes answers in the wrong language; the spoken reply must follow the user.
+        if (ack && !matchesLang(ack, lang)) ack = describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
+        if (!planned.length && waiting.has('location') && !/[?？]\s*$/.test(ack || '')) ack = [ack, tr(lang).askLocation].filter(Boolean).join(' ');
         if (ack) emit(session, 'say', { turnId, text: ack, final: planned.length === 0 });
       } finally {
         release();
@@ -182,7 +178,10 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         const action = session.state.actions.find((a) => a.id === first.id);
         const tool = tools.get(action.tool);
         toolResult = { actionId: first.id, tool: action.tool, mock: tool.mock, result: first.result };
-        reply = [describeChanges(patch), tool.summarize(first.result, session.state.intent)].filter(Boolean).join(' ');
+        reply = [describeChanges(patch, lang), tool.summarize(first.result, session.state.intent, lang)].filter(Boolean).join(' ');
+        emit(session, 'say', { turnId, text: reply, final: true });
+      } else if (planned.length && outcomes.some((o) => o.error)) {
+        reply = tr(lang).toolFailed;
         emit(session, 'say', { turnId, text: reply, final: true });
       }
       emit(session, 'done', { turnId, superseded });

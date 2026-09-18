@@ -5,13 +5,17 @@ import { createGlmInterpreter } from './agent/interpreter.mjs';
 import { createAgentRuntime } from './agent/runtime.mjs';
 import { createToolRegistry } from './tools/registry.mjs';
 import { createMockRestaurantSearch } from './tools/mock-restaurant-search.mjs';
+import { createOsmRestaurantSearch } from './tools/osm-restaurant-search.mjs';
 import { createVoiceRegistry } from './voice/provider.mjs';
 import { createApiHandler } from './api.mjs';
 import { attachVoiceServer } from './voice/ws-server.mjs';
 
 export function createCompassBackend({ env = process.env, interpreter, tools, connectUpstream, logger = console } = {}) {
   const config = loadConfig(env);
-  const toolRegistry = tools || createToolRegistry([createMockRestaurantSearch({ delayMs: Number(env.MOCK_TOOL_DELAY_MS ?? 1500) })]);
+  // COMPASS_TOOLS=osm (default, real OpenStreetMap search) | mock (recorded fixture / offline).
+  const toolRegistry = tools || createToolRegistry([
+    env.COMPASS_TOOLS === 'mock' ? createMockRestaurantSearch({ delayMs: Number(env.MOCK_TOOL_DELAY_MS ?? 1500) }) : createOsmRestaurantSearch(),
+  ]);
   const interp = interpreter || (config.nebius.apiKey
     ? createGlmInterpreter(createNebiusClient(config.nebius))
     : { interpret: async () => { throw new LlmError('NEBIUS_API_KEY is not configured', { code: 'not_configured' }); } });

@@ -107,6 +107,7 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
   }
 
   // ---------- speaking ----------
+  let lastSpokenTurnId = null;
   function requestSpeech(text, meta) {
     if (!text) return;
     speakQueue.push({ text, ...meta });
@@ -123,10 +124,12 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
     while (speakQueue.length && isStale(speakQueue[0])) {
       const dropped = speakQueue.shift();
       client.sendJson({ type: 'compass', event: { type: 'reasoning_status', stage: 'speech_dropped_stale', turnId: dropped.turnId, text: dropped.text } });
+      client.sendJson({ type: 'response.stale', itemId: null, turnId: dropped.turnId || null, reason: 'superseded_before_speaking' });
     }
     if (!speakQueue.length) return idleStatus();
     const next = speakQueue.shift();
-    active = { pending: true, kind: 'speak', turnSeq: next.turnSeq };
+    active = { pending: true, kind: 'speak', turnSeq: next.turnSeq, turnId: next.turnId || null };
+    lastSpokenTurnId = next.turnId || lastSpokenTurnId;
     for (const ev of speakEvents(next.text, { metadata: { compass: 'speak', turnSeq: String(next.turnSeq) } })) sendUp(ev);
   }
 
@@ -183,6 +186,8 @@ export function createRealtimeBridge({ client, runtime, connectUpstream, voice =
       const itemId = playingItem || active?.itemId || null;
       client.sendJson({ type: 'audio.flush', itemId, reason });
       m.flushAt = now();
+      // Explicit marker: everything COMPASS was saying is stale; UI drops captions/partial reply.
+      client.sendJson({ type: 'response.stale', itemId, turnId: active?.turnId ?? lastSpokenTurnId ?? null, reason });
       // Truncate what the user actually heard (server estimate; the client may refine via 'played').
       const p = itemId && playback.get(itemId);
       if (p && !p.truncated) {

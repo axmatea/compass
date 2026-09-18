@@ -79,6 +79,7 @@ test('dinner by voice: barge-in during playback flushes audio, supersedes 7pm, s
   up.emit({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
   const flush = client.json.find((j) => j.type === 'audio.flush');
   assert.ok(flush, 'audio.flush sent while playback in progress');
+  assert.ok(client.json.some((j) => j.type === 'response.stale'), 'old response explicitly marked stale');
   assert.equal(flush.itemId, firstItem);
   assert.equal(statuses(client).at(-1), 'INTERRUPTED');
   const trunc = up.sent.find((e) => e.type === 'conversation.item.truncate');

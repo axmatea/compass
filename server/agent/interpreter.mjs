@@ -52,10 +52,11 @@ Rules:
 - A question that proposes a change ("can we change it to X?", "what about X?", "could we do X?") IS a change request: apply X.
 - "date" keeps relative phrases as spoken ("next week", "the week after next").
 - "unset" only if the user explicitly drops a detail.
-- "tool": pick a tool only if the user's goal needs it now, else null.
+- "tool": pick a tool only if the user's goal needs it now, else null. If the user asked for it but a needed field is missing, STILL set the tool (COMPASS waits for the field) and ask for the missing field in "reply".
 Tools:
 ${toolLines}
-- "reply": ALWAYS one short spoken sentence, max 14 words, acknowledging what changed. Never empty. Never claim a booking or message was completed.
+- "reply": ALWAYS one short spoken sentence, max 14 words, acknowledging what changed, written in the language given by LANG (en = English, ru = Russian). Never empty. Never claim a booking or message was completed. In Russian avoid gendered first-person past tense (say "Перенесено на ...", "Готово", not "перенёс/перенесла").
+- Field values are ALWAYS canonical English regardless of LANG: "завтра" -> "tomorrow", "через две недели" -> "the week after next", "в девять" -> "21:00", "Пало-Альто" -> "Palo Alto", "итальянский" -> "Italian".
 Always include all four keys. Example:
 CURRENT_STATE {"task":"schedule dinner","time":"19:00","location":null,"cuisine":"Italian"}
 UTTERANCE "no, 7:30, and somewhere in San Mateo"
@@ -89,12 +90,12 @@ function isMeaningful(obj) {
 export const INTERPRET_MODES = Object.freeze(['required', 'auto']);
 
 export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES, parallel = true } = {}) {
-  async function once({ state, text, tools, signal }, toolChoice) {
+  async function once({ state, text, lang, tools, signal }, toolChoice) {
     const attempt = AbortSignal.timeout(attemptTimeoutMs);
     const r = await llm.chat({
       messages: [
         { role: 'system', content: buildSystemPrompt(tools) },
-        { role: 'user', content: JSON.stringify({ CURRENT_STATE: state.intent, UTTERANCE: text }) },
+        { role: 'user', content: JSON.stringify({ CURRENT_STATE: state.intent, LANG: lang || 'en', UTTERANCE: text }) },
       ],
       tools: [buildIntentFunction(tools)],
       toolChoice,
