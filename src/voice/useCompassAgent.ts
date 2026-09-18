@@ -10,6 +10,8 @@ import { createTransport } from './transport'
 import type { TransportMode } from './transport'
 import type { AgentEvent, FieldName, Intent, OrbState, PatchOp, SearchResult, Turn } from './types'
 import { t } from './i18n'
+import { bosonConfigured, loadBoson } from './bosonVoice'
+import type { BosonClient, BosonStatus, VoiceSource } from './bosonVoice'
 
 export interface ActionView {
   id: string
@@ -50,6 +52,11 @@ export function useCompassAgent() {
   const [micSupported, setMicSupported] = useState(false)
   const [voiceSupported, setVoiceSupported] = useState(false)
   const [revisions, setRevisions] = useState(0)
+  const [voiceSource, setVoiceSource] = useState<VoiceSource | null>(null)
+  const bosonOk = useRef(false)
+  const bosonRef = useRef<BosonClient | null>(null)
+  /** Resolves when a Boson connection attempt settles, so a turn typed meanwhile is never lost. */
+  const bosonPending = useRef<Promise<boolean> | null>(null)
 
   const seen = useRef(new Set<string>())
   const sessionRef = useRef<string | undefined>(undefined)
@@ -76,8 +83,11 @@ export function useCompassAgent() {
   useEffect(() => {
     setMicSupported(recognitionSupported())
     setVoiceSupported(speaker.supported())
-    void transport.ready().then(m => { modeRef.current = m; setServedBy(m) })
-    return () => { speaker.stop(); listenerRef.current?.stop(); timers.current.forEach(clearTimeout) }
+    void transport.ready().then(async m => {
+      modeRef.current = m; setServedBy(m)
+      if (m === 'live' && await bosonConfigured()) { bosonOk.current = true; setMicSupported(true) }
+    })
+    return () => { speaker.stop(); listenerRef.current?.stop(); bosonRef.current?.stop(); timers.current.forEach(clearTimeout) }
   }, [speaker, transport])
   useEffect(() => { voiceOnRef.current = voiceOn; if (!voiceOn) speaker.stop() }, [voiceOn, speaker])
 
@@ -92,6 +102,7 @@ export function useCompassAgent() {
   }, [speaker])
 
   const say = useCallback((text: string) => {
+    if (bosonRef.current) { setCaption({ text, key: nextKey(), msPerWord: T.msPerWord }); return }
     stopSpeech(false)
     const myEpoch = epoch.current
     speakingText.current = text
@@ -173,24 +184,93 @@ export function useCompassAgent() {
   }, [onEvent, transport])
 
   /** Barge-in: cut speech now, flare, send the new words immediately (the backend supersedes stale work). */
+  const flare = useCallback(() => {
+    setInterrupted(true); setHolding(true)
+    later(() => setInterrupted(false), T.interruptFlare)
+    later(() => setHolding(false), T.holdMax)
+  }, [])
+
   const interrupt = useCallback((text?: string) => {
+    if (bosonRef.current) { flare(); return }
     stopSpeech(true)
     setInterrupted(true); setHolding(true)
     later(() => setInterrupted(false), T.interruptFlare)
     later(() => setHolding(false), T.holdMax)
     if (text) void send(text)
-  }, [send, stopSpeech])
+  }, [flare, send, stopSpeech])
 
   const submit = useCallback((text: string) => {
     const clean = text.trim()
     if (!clean) return
     setNotice('')
+    if (bosonPending.current) { const p = bosonPending.current; setThinking(true); void p.then(() => submitRef.current(clean)); return }
+    const boson = bosonRef.current
+    if (boson && boson.mode === 'boson') { if (isBusy(orbRef.current)) flare(); setThinking(true); boson.sendText(clean); return }
     if (isBusy(orbRef.current)) interrupt(clean)
     else void send(clean)
-  }, [interrupt, send])
+  }, [flare, interrupt, send])
 
-  const toggleMic = useCallback(() => {
-    if (micOnRef.current) { listenerRef.current?.stop(); return }
+  const submitRef = useRef(submit)
+  submitRef.current = submit
+
+  const endMic = useCallback(() => { micOnRef.current = false; setMicOn(false); setInterim(''); setSpeaking(false) }, [])
+
+  const onBosonStatus = useCallback((s: BosonStatus) => {
+    setSpeaking(s === 'SPEAKING')
+    if (s === 'THINKING') setThinking(true)
+    if (s === 'SPEECH_DETECTED' && isBusy(orbRef.current)) flare()
+    if (s === 'INTERRUPTED') {
+      flare()
+      setCaption(c => { if (c) setTurns(t => { const i = t.map(x => x.who === 'compass' && x.text === c.text).lastIndexOf(true); return i < 0 ? t : t.map((x, j) => (j === i ? { ...x, interrupted: true } : x)) }); return null })
+    }
+    if (s === 'REPLANNING') { setReplanning(true); later(() => setReplanning(false), T.replanHold) }
+  }, [flare])
+
+  function toggleMic() {
+    if (micOnRef.current) {
+      if (bosonRef.current) { bosonRef.current.stop(); bosonRef.current = null; setVoiceSource(null); endMic() }
+      else listenerRef.current?.stop()
+      return
+    }
+    if (bosonOk.current && !bosonRef.current) { void startBoson(); return }
+    startBrowser()
+  }
+
+  const startBoson = async () => {
+    micOnRef.current = true; setMicOn(true); setNotice('')
+    const myEpoch = epoch.current
+    let settle: (ok: boolean) => void = () => {}
+    bosonPending.current = new Promise<boolean>(r => { settle = r })
+    const client = await loadBoson({
+      sessionId: sessionRef.current,
+      onStatus: s => { if (bosonRef.current === client) onBosonStatus(s) },
+      onEvent: e => { if (bosonRef.current === client) onEvent(e, myEpoch) },
+      onTranscript: tr => {
+        if (bosonRef.current !== client || tr.role !== 'user' || !tr.text) return
+        if (tr.source === 'higgs-stt') { setInterim(tr.text); return }
+        setInterim(''); setTurns(t => [...t, { id: 'u' + nextKey(), who: 'user', text: tr.text }])
+      },
+      onError: e => { if (bosonRef.current === client && e.code === 'voice_closed') { bosonRef.current = null; setVoiceSource(null); endMic(); setNotice(t.notice.voiceClosed) } },
+      onMode: () => {},
+    })
+    if (!client) { bosonPending.current = null; settle(false); bosonOk.current = false; endMic(); startBrowser(); return }
+    bosonRef.current = client
+    let mode: string = 'failed'
+    try {
+      mode = await Promise.race([client.start(), new Promise<string>(r => setTimeout(() => r('timeout'), 9000))])
+    } catch { /* no mic or no recognition: handled below */ }
+    bosonPending.current = null
+    settle(mode === 'boson' && bosonRef.current === client)
+    if (bosonRef.current !== client) return
+    if (mode !== 'boson') {
+      // The backend client falls back on its own; use ours instead (echo filter, recorded replay, i18n).
+      client.stop(); bosonRef.current = null; bosonOk.current = false; endMic(); startBrowser(); return
+    }
+    if (!sessionRef.current && client.sessionId) sessionRef.current = client.sessionId
+    setVoiceSource('boson'); setServedBy('live'); setNotice(t.notice.listening)
+  }
+
+  function startBrowser() {
     const listener = createListener({
       onInterim: heard => {
         if (isEcho(heard, echoRef.current)) return
@@ -199,25 +279,26 @@ export function useCompassAgent() {
       },
       onFinal: heard => { if (isEcho(heard, echoRef.current)) { setInterim(''); return } submit(heard) },
       onError: msg => setNotice(msg),
-      onEnd: () => { micOnRef.current = false; setMicOn(false); setInterim('') },
+      onEnd: () => { micOnRef.current = false; setMicOn(false); setInterim(''); setVoiceSource(null) },
     })
     listenerRef.current = listener
-    if (listener.start()) { micOnRef.current = true; setMicOn(true); setNotice(t.notice.listening) }
+    if (listener.start()) { micOnRef.current = true; setMicOn(true); setVoiceSource('browser'); setNotice(t.notice.listening) }
     else setNotice(t.notice.noVoice)
-  }, [interrupt, submit])
+  }
 
   const reset = useCallback(() => {
     epoch.current++
     stopSpeech(false)
+    if (bosonRef.current) { bosonRef.current.stop(); bosonRef.current = null; setVoiceSource(null); endMic() }
     timers.current.forEach(clearTimeout); timers.current = []
     transport.reset()
     seen.current.clear(); sessionRef.current = undefined; sessionWaiters.current = []
     setPlan(null); setActions([]); setTurns([]); setInterim(''); setNotice(''); setRevisions(0)
     setThinking(false); setInterrupted(false); setReplanning(false); setHolding(false)
-  }, [stopSpeech, transport])
+  }, [endMic, stopSpeech, transport])
 
   return {
-    orb, plan, actions, holding, turns, interim, caption, servedBy, revisions,
+    orb, plan, actions, holding, turns, interim, caption, servedBy, revisions, voiceSource,
     micOn, micSupported, voiceOn, voiceSupported, notice,
     setVoiceOn, submit, interrupt, toggleMic, reset,
     hasPlan: Boolean(plan),

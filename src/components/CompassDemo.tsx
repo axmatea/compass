@@ -117,7 +117,7 @@ export default function CompassDemo() {
     <div className="compass-demo cv">
       <div className={'cv-shell' + (a.hasPlan ? ' has-plan' : '')} data-state={a.orb}>
         <div className="cv-corner">
-          <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title={t.voiceTitle}><Speaker on={a.voiceOn} /><span className="cv-sr">{a.voiceOn ? t.voiceOn : t.voiceOff}</span></button>
+          {a.voiceSource !== 'boson' && <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title={t.voiceTitle}><Speaker on={a.voiceOn} /><span className="cv-sr">{a.voiceOn ? t.voiceOn : t.voiceOff}</span></button>}
           <button type="button" className="cv-icon-btn" onClick={a.reset} title={t.reset}><Restart /><span className="cv-sr">{t.reset}</span></button>
         </div>
 
@@ -141,7 +141,7 @@ export default function CompassDemo() {
                 {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title={t.interruptTitle}>{t.interrupt}</button>}
               </div>
               <div className="cv-script">
-                <span className="cv-script-label">{busy && a.hasPlan ? t.interruptLabel : a.hasPlan ? t.changeLabel : t.tryLabel}</span>
+                {busy && a.hasPlan && <span className="cv-script-label">{t.interruptLabel}</span>}
                 <button type="button" className={'cv-line' + (busy && a.hasPlan ? ' is-urgent' : '')} onClick={() => a.submit(nextLine)}>
                   <span>“{nextLine}”</span><Arrow />
                 </button>
@@ -154,7 +154,7 @@ export default function CompassDemo() {
             </div>
 
             {a.turns.length > 0 && <ol className="cv-log" ref={logRef} aria-label={t.transcript}>
-              {a.turns.slice(-4).map(x => <li key={x.id} className={'cv-turn is-' + x.who + (x.interrupted ? ' is-cut' : '')}><span>{x.who === 'user' ? t.you : t.compass}</span><p dir="auto">{x.text}{x.interrupted && <em> · {t.cutOff}</em>}</p></li>)}
+              {a.turns.slice(-2).map(x => <li key={x.id} className={'cv-turn is-' + x.who + (x.interrupted ? ' is-cut' : '')}><span>{x.who === 'user' ? t.you : t.compass}</span><p dir="auto">{x.text}{x.interrupted && <em> · {t.cutOff}</em>}</p></li>)}
             </ol>}
             <p className="cv-notice" role="status">{a.notice}</p>
           </div>
@@ -171,7 +171,7 @@ export default function CompassDemo() {
           </div>
         </div>
       </div>
-      {a.servedBy && <p className="cd-disclosure"><span className="cd-disclosure-dot" />{a.servedBy === 'live' ? t.disclosure.live : t.disclosure.recorded}</p>}
+      {a.servedBy && <p className="cd-disclosure"><span className="cd-disclosure-dot" />{a.servedBy === 'live' ? t.disclosure.live : t.disclosure.recorded}{a.voiceSource && <span className="cd-voice-src"> · {t.voiceSource[a.voiceSource]}</span>}</p>}
     </div>
   )
 }

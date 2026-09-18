@@ -231,3 +231,20 @@
 .cv .cv-orb-label{font-size:10px}
 .compass-demo .cd-disclosure{justify-content:center;margin:18px 0 0;font-size:10.5px}
 .cv-orb{view-transition-name:compass-orb}
+
+/* phase 3 polish: product, not panel */
+.cv .cv-composer{border:0;border-bottom:1px solid var(--cv-line);border-radius:0;margin-top:6px}
+.cv .cv-composer input{padding:12px 2px;font-size:13.5px}
+.cv .cv-composer:focus-within{border-bottom-color:color-mix(in srgb,var(--cv-sage) 50%,transparent)}
+.cv .cv-script-label{color:var(--cv-coral)}
+.cv .cv-line{background:transparent}
+.cv .cv-log{border-top:0;margin-top:14px;padding-top:0}
+.cv .cv-turn span{opacity:.7}
+.cv .cv-orb-label{letter-spacing:.3em;opacity:.85}
+.cv .cv-plan,.cv .cv-action{background:#0a1116cc;backdrop-filter:blur(8px)}
+/* entering from the website: the orb arrives first, the rest settles after */
+@keyframes cv-arrive{from{opacity:0;transform:scale(.72);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes cv-settle{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.cv .cv-orb-wrap{animation:cv-arrive .9s cubic-bezier(.2,.8,.2,1) both}
+.cv .cv-live,.cv .cv-dock,.cv .cv-corner{animation:cv-settle .7s .35s cubic-bezier(.2,.8,.2,1) both}
+.compass-demo .cd-disclosure{animation:cv-settle .7s .6s ease both;opacity:.8}
