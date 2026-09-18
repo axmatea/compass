@@ -1,50 +1,73 @@
-// Pure derivation: session (contract shape) + timeline -> what the film shows.
-// No DOM. Also used by export-vtt.mjs in Node.
+// Pure derivation from the canonical /api/turn v1 fixture (dinner-turns.json,
+// byte-identical copy of feat/agent-core test/fixtures/dinner-turns.json).
+// No schema translation: render states are read straight off v1 PatchOps.
+//   status 'kept'                      -> kept
+//   status 'active', change 'updated'  -> `from` superseded, `to` active (gold)
+//   status 'active', change 'added'    -> added
+//   status 'active', change 'removed'  -> `from` superseded, nothing active
+// Only display formatting happens here (24h -> "8:00 PM", capitalisation).
 import { UTTER } from "./timeline.js";
 
-// Row status after the interruption, derived only from turn 2 patch.
-//   replaced -> old value superseded, new value active (gold)
-//   added    -> new slot appears
-//   kept     -> untouched by the patch
-export function deriveRows(session) {
-  const [t1, t2] = session.turns;
-  const before = t1.response.state;
-  const after = t2.response.state;
-  const ops = new Map(t2.response.patch.map((p) => [p.path, p]));
-  const fields = session.fieldOrder.filter((f) => f in before || f in after);
-  let order = 0;
-  return fields.map((field) => {
-    const op = ops.get(field);
-    const inFirst = field in before;
-    return {
-      field,
-      label: session.fieldLabels[field] || field,
-      firstIndex: inFirst ? order++ : -1,
-      status: !op ? "kept" : op.op === "replace" ? "replaced" : "added",
-      from: op && op.op === "replace" ? op.from ?? before[field] : before[field],
-      to: after[field] ?? before[field],
-    };
-  });
-}
+export const FIELD_LABELS = { task: "Task", date: "When", time: "Time", location: "Near", cuisine: "Cuisine", party_size: "Party" };
 
-export function deriveSteps(session) {
-  const [t1, t2] = session.turns;
-  const next = new Map(t2.response.plan.map((s) => [s.id, s]));
-  return t1.response.plan.map((s) => {
-    const n = next.get(s.id);
-    return { id: s.id, from: s.label, to: n ? n.label : s.label, status: n && n.label !== s.label ? "replaced" : "kept" };
-  });
-}
-
-// Word timings: use real ASR timestamps if provided, otherwise fit words
-// into the utterance window proportionally to their length.
-export function timeWords(text, window, words) {
-  const [a, b] = window;
-  if (words && words.length) {
-    const last = words[words.length - 1].s || 1;
-    const k = Math.min(1, (b - a) / last);
-    return words.map((x) => ({ w: x.w, s: a + x.s * k }));
+export function formatValue(field, v) {
+  if (v == null) return "";
+  if (field === "time" && /^\d{1,2}:\d{2}$/.test(v)) {
+    const [h, m] = v.split(":").map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
   }
+  const s = String(v);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function renderStatus(op) {
+  if (op.status === "kept") return "kept";
+  if (op.change === "added") return "added";
+  if (op.change === "removed") return "removed";
+  return "updated";
+}
+
+export function deriveRows(fixture) {
+  const [t1, t2] = fixture.turns;
+  const firstFields = t1.response.patch.map((p) => p.field);
+  const order = Object.keys(t2.response.state.intent);
+  const ops = [...t2.response.patch].sort((a, b) => order.indexOf(a.field) - order.indexOf(b.field));
+  return ops.map((op) => ({
+    field: op.field,
+    label: FIELD_LABELS[op.field] || op.field,
+    firstIndex: firstFields.indexOf(op.field),
+    status: renderStatus(op),
+    from: formatValue(op.field, op.from),
+    to: formatValue(op.field, op.to),
+  }));
+}
+
+export function deriveActions(fixture) {
+  const t2 = fixture.turns[1].response;
+  const inv = t2.events.find((e) => e.type === "action_invalidated");
+  return t2.state.actions.map((a) => ({
+    id: a.id,
+    status: a.status, // invalidated | running | done
+    label: ["cuisine", "location", "date", "time"].map((f) => formatValue(f, a.args[f])).filter(Boolean).join(" · "),
+    invalidatedFields: a.status === "invalidated" ? (inv && inv.actionId === a.id ? inv.changedFields : a.invalidatedBy?.fields || []) : [],
+  }));
+}
+
+export function deriveResults(fixture) {
+  const tr = fixture.turns[1].response.toolResult;
+  const res = tr?.result?.results || [];
+  return {
+    mock: Boolean(tr?.mock || tr?.result?.mock),
+    items: res.map((r) => ({
+      name: r.name.replace(/\s*\(mock\)\s*$/i, ""),
+      meta: `${r.area} · ${(r.distanceKm * 0.621371).toFixed(1)} mi`,
+      slot: formatValue("time", r.availableAt),
+    })),
+  };
+}
+
+// Word timings: fit words into the spoken window proportionally to length.
+export function timeWords(text, [a, b]) {
   const list = text.split(/\s+/);
   const weights = list.map((w) => w.length + 2 + (/[.,]$/.test(w) ? 4 : 0));
   const total = weights.reduce((x, y) => x + y, 0);
@@ -56,22 +79,25 @@ export function timeWords(text, window, words) {
   });
 }
 
-export function deriveCues(session) {
-  const [t1, t2] = session.turns;
-  const cues = [
-    { id: "user1", speaker: "You", text: t1.text, window: UTTER.user1, words: timeWords(t1.text, UTTER.user1, t1.words) },
-    { id: "user2", speaker: "You", text: t2.text, window: UTTER.user2, words: timeWords(t2.text, UTTER.user2, t2.words), interrupt: true },
+export function deriveCues(fixture) {
+  const [t1, t2] = fixture.turns;
+  const says = (r, turnId) => r.events.filter((e) => e.type === "say" && e.turnId === turnId).map((e) => e.text);
+  const lines = [
+    { id: "user1", speaker: "You", text: t1.request.text },
+    { id: "say1", speaker: "COMPASS", text: says(t1.response, t1.response.turnId)[0] },
+    { id: "user2", speaker: "You", text: t2.request.text, interrupt: true },
+    { id: "say2", speaker: "COMPASS", text: says(t2.response, t2.response.turnId)[0] },
+    { id: "reply", speaker: "COMPASS", text: t2.response.reply },
   ];
-  const reply = t2.response.reply;
-  if (reply) cues.push({ id: "reply", speaker: "COMPASS", text: reply.text, window: UTTER.reply, words: timeWords(reply.text, UTTER.reply, reply.words) });
-  return cues;
+  return lines.filter((l) => l.text).map((l) => ({ ...l, window: UTTER[l.id], words: timeWords(l.text, UTTER[l.id]) }));
 }
 
 export function patchSummary(rows) {
   const n = (s) => rows.filter((r) => r.status === s).length;
-  const parts = [];
-  if (n("replaced")) parts.push(`${n("replaced")} changed`);
-  if (n("added")) parts.push(`${n("added")} added`);
-  if (n("kept")) parts.push(`${n("kept")} kept`);
-  return parts.join(" · ");
+  return [
+    n("updated") && `${n("updated")} updated`,
+    n("added") && `${n("added")} added`,
+    n("removed") && `${n("removed")} removed`,
+    n("kept") && `${n("kept")} kept`,
+  ].filter(Boolean).join(" · ");
 }

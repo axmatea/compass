@@ -1,6 +1,6 @@
-import { DURATION, FPS, SHOTS, UTTER, BEATS, shotAt, statusAt } from "./timeline.js";
-import { session } from "./data.mock.js";
-import { deriveRows, deriveSteps, deriveCues, patchSummary } from "./intent.js";
+import { DURATION, FPS, SHOTS, BEATS, CUE_HOLD, shotAt, statusAt } from "./timeline.js";
+import fixture from "./dinner-turns.json";
+import { deriveRows, deriveActions, deriveResults, deriveCues, patchSummary } from "./intent.js";
 
 // ---------- math ----------
 const clamp = (x) => Math.min(1, Math.max(0, x));
@@ -12,12 +12,11 @@ const lerp = (a, b, x) => a + (b - a) * x;
 const bump = (t, at, len) => (t < at || t > at + len ? 0 : Math.sin((Math.PI * (t - at)) / len));
 
 // ---------- derived content ----------
-const rows = deriveRows(session);
-const steps = deriveSteps(session);
-const cues = deriveCues(session);
-const t1 = session.turns[0].response;
-const t2 = session.turns[1].response;
-const P1 = t1.progress ?? 0.46;
+const rows = deriveRows(fixture);
+const actions = deriveActions(fixture);
+const results = deriveResults(fixture);
+const cues = deriveCues(fixture);
+const SOURCE = results.mock ? "v1 fixture · mock tool" : "v1 fixture";
 
 // ---------- DOM ----------
 const $ = (tag, cls, html) => {
@@ -27,7 +26,7 @@ const $ = (tag, cls, html) => {
   return el;
 };
 const stage = document.querySelector(".fl-stage");
-stage.dataset.source = session.source;
+stage.dataset.source = SOURCE;
 
 const header = $("header", "fl-header");
 header.append($("span", "fl-wordmark", "COMPASS"));
@@ -59,18 +58,18 @@ const rowEls = rows.map((r) => {
   el.dataset.status = r.status;
   const edge = $("span", "fl-row-edge");
   const label = $("span", "fl-row-label", r.label);
-  const tag = $("span", "fl-row-tag", r.status === "kept" ? "kept" : r.status === "added" ? "new" : "changed");
+  const tag = $("span", "fl-row-tag", { kept: "kept", added: "new", updated: "updated", removed: "removed" }[r.status]);
   const vals = $("span", "fl-vals");
   let oldEl = null;
   let newEl = null;
   let strike = null;
-  if (r.status !== "added") {
+  if (r.status !== "added" && r.from) {
     oldEl = $("span", "fl-val old", r.from);
     strike = $("i", "fl-strike");
     oldEl.append(strike);
     vals.append(oldEl);
   }
-  if (r.status !== "kept") {
+  if (r.status === "added" || r.status === "updated") {
     newEl = $("span", "fl-val new", r.to);
     vals.append(newEl);
   }
@@ -79,56 +78,33 @@ const rowEls = rows.map((r) => {
   return { r, el, edge, label, tag, oldEl, newEl, strike, newW: 0 };
 });
 
-// Action panel
+// Action panel: one row per state.actions[] entry (invalidated / running / done)
 const act = $("section", "fl-panel fl-act");
 const actHead = $("div", "fl-head");
-const scopeOf = (s) => [s.cuisine, s.location, s.date && s.time ? `${s.date} ${s.time}` : s.time].filter(Boolean).join(" · ");
-const scope = $("em");
-const scopeA = $("span", null, scopeOf(t1.state));
-const scopeB = $("span", null, scopeOf(t2.state));
-scope.style.position = "relative";
-scopeB.style.cssText = "position:absolute;right:0;top:0;white-space:nowrap";
-scope.append(scopeA, scopeB);
-actHead.append($("span", null, "Action"), scope);
-const progress = $("div", "fl-progress");
-const progressFill = $("i");
-progress.append(progressFill);
-const pMeta = $("div", "fl-progress-meta");
-const pLeft = $("span");
-const pRight = $("span");
-pMeta.append(pLeft, pRight);
-const stepList = $("ol", "fl-list");
-const stepEls = steps.map((s) => {
-  const li = $("li");
+actHead.append($("span", null, "Action"), $("em", null, "Restaurant search"));
+const actEls = actions.map((A) => {
+  const row = $("div", "fl-action");
+  row.dataset.status = A.status;
   const dot = $("span", "fl-dot");
-  const text = $("span", "fl-step-text");
-  const a = $("span", null, s.from);
+  const text = $("span", "fl-action-text", A.label);
   const strike = $("i", "fl-strike");
-  a.append(strike);
-  text.append(a);
-  let b = null;
-  if (s.status === "replaced") {
-    b = $("span", null, s.to);
-    text.append(b);
-  }
-  li.append(dot, text);
-  stepList.append(li);
-  return { s, li, dot, a, b, strike };
+  text.append(strike);
+  const st = $("span", "fl-action-status");
+  const run = $("span", "fl-run");
+  const runFill = $("i");
+  run.append(runFill);
+  row.append(dot, text, st, run);
+  return { A, row, dot, text, strike, st, run, runFill };
 });
+const resHead = $("div", "fl-res-head", results.mock ? "Sample results" : "Results");
 const resList = $("ol", "fl-list");
-const resEls = (t2.toolResult?.restaurants || []).map((x) => {
+const resEls = results.items.map((x) => {
   const li = $("li");
   li.append($("span", "fl-dot"), $("span", "fl-res-name", x.name), $("span", "fl-res-meta", x.meta), $("span", "fl-res-slot", x.slot));
   resList.append(li);
   return li;
 });
-const cal = $("div", "fl-cal");
-const cd = t2.toolResult?.calendarDraft;
-if (cd) {
-  const when = $("b", null, cd.when);
-  cal.append($("span", null, `${cd.title} ·`), when, $("small", null, cd.status));
-}
-act.append(actHead, progress, pMeta, stepList, resList, cal);
+act.append(actHead, ...actEls.map((x) => x.row), resHead, resList);
 
 // Subtitles
 const sub = $("div", "fl-sub");
@@ -188,7 +164,7 @@ function render(t) {
   let cy = lerp(lerp(760, 300, dock), 800, hero);
   let size = lerp(lerp(340, 170, dock), 300, hero);
   const flare = bump(t, BEATS.bargeIn, 0.9);
-  const speak = voiceAmp(t, "reply");
+  const speak = Math.max(voiceAmp(t, "say1"), voiceAmp(t, "say2"), voiceAmp(t, "reply"));
   const listen = Math.max(voiceAmp(t, "user1"), voiceAmp(t, "user2"));
   const breathe = 1 + Math.sin(t * 1.05) * 0.018;
   const sc = (size / 340) * breathe * (1 + flare * 0.1 + speak * 0.035);
@@ -227,7 +203,7 @@ function render(t) {
     R.edge.style.opacity = edgeO.toFixed(3);
     R.edge.style.transform = `scaleY(${edgeO.toFixed(3)})`;
     if (R.oldEl) {
-      if (r.status === "replaced") {
+      if (r.status === "updated" || r.status === "removed") {
         const st = k(t, BEATS.strike, outExpo);
         const rc = k(t, BEATS.recede, inOutCubic);
         R.strike.style.transform = `scaleX(${st.toFixed(3)})`;
@@ -254,55 +230,38 @@ function render(t) {
   // action panel
   const aIn = k(t, BEATS.actIn);
   show(act, aIn * (1 - outUI), lerp(40, 0, aIn) - outUI * 30, (1 - aIn) * 8 + outUI * 10);
-  const scopeSwap = k(t, [19.55, 20.1]);
-  scopeA.style.opacity = (1 - scopeSwap).toFixed(3);
-  scopeB.style.opacity = scopeSwap.toFixed(3);
-  const frozen = t >= BEATS.bargeIn && t < BEATS.progress2[0];
-  let p = lerp(0, P1, k(t, BEATS.progress1, inOutCubic));
-  if (t >= BEATS.progress2[0]) p = lerp(P1, 1, k(t, BEATS.progress2, inOutCubic));
-  progressFill.style.width = `${(p * 100).toFixed(2)}%`;
-  const freezeMix = frozen ? clamp((t - BEATS.bargeIn) / 0.4) : 0;
-  progressFill.style.background = freezeMix > 0 ? `rgba(111,135,150,${lerp(1, 0.9, freezeMix)})` : "";
-  progressFill.style.boxShadow = frozen ? "none" : "";
-  if (t < BEATS.bargeIn) { pLeft.textContent = "Searching"; pRight.textContent = `${Math.round(p * 100)}%`; }
-  else if (t < BEATS.progress2[0]) { pLeft.textContent = t < 15 ? "Paused, listening" : "Replanning"; pRight.textContent = `${Math.round(P1 * 100)}%`; }
-  else if (t < BEATS.progress2[1]) { pLeft.textContent = `Resumed at ${Math.round(P1 * 100)}%, not restarted`; pRight.textContent = `${Math.round(p * 100)}%`; }
-  else { pLeft.textContent = "Found 3 · table held as draft"; pRight.textContent = "100%"; }
-
-  const stepsOut = k(t, [21.05, 21.45]);
-  stepList.style.opacity = (1 - stepsOut).toFixed(3);
-  stepList.style.transform = `translateY(${(-20 * stepsOut).toFixed(2)}px)`;
-  stepEls.forEach(({ s, li, dot, a, b, strike }, i) => {
-    const sIn = k(t, [9.3 + i * 0.2, 9.9 + i * 0.2]);
-    li.style.opacity = sIn.toFixed(3);
-    const active = i === 0 && t < BEATS.bargeIn && t >= 9.5;
-    const doneFirst = i === 0 && t >= 20.8;
-    dot.style.background = doneFirst ? "#c3e3f9" : active ? `rgba(195,227,249,${0.4 + 0.6 * Math.abs(Math.sin(t * 4))})` : "transparent";
-    dot.style.borderColor = active || doneFirst ? "#c3e3f9" : "#7c98aa";
-    li.style.color = active ? "#f4f7fa" : "";
-    if (s.status === "replaced" && b) {
-      const st = k(t, BEATS.stepStrike, outExpo);
-      const nb = k(t, BEATS.stepNew);
-      strike.style.transform = `scaleX(${st.toFixed(3)})`;
-      a.style.opacity = (1 - nb).toFixed(3);
-      a.style.transform = `translateY(${(-26 * nb).toFixed(2)}px)`;
-      a.style.color = st > 0 ? "#8599a8" : "";
-      b.style.opacity = nb.toFixed(3);
-      b.style.transform = `translateY(${lerp(26, 0, nb).toFixed(2)}px)`;
-      b.style.color = nb > 0 ? "#f4f7fa" : "";
-    }
+  const inv = k(t, BEATS.invalidate, outExpo);
+  const newIn = k(t, BEATS.newAction);
+  actEls.forEach(({ A, row, dot, text, strike, st, run, runFill }) => {
+    const first = A.status === "invalidated";
+    // first action: running from tool_call until action_invalidated
+    // second action: running from new tool_call until tool_result
+    const rowIn = first ? k(t, [BEATS.actIn[0] + 0.3, BEATS.actIn[1] + 0.3]) : newIn;
+    const running = first ? t >= BEATS.actIn[0] && t < BEATS.invalidate[0] : t >= BEATS.newAction[0] && t < BEATS.toolDone;
+    const done = !first && t >= BEATS.toolDone;
+    const dead = first && t >= BEATS.invalidate[0];
+    row.style.opacity = (rowIn * (dead ? lerp(1, 0.55, inv) : 1)).toFixed(3);
+    row.style.transform = `translateY(${lerp(22, 0, rowIn).toFixed(2)}px)`;
+    strike.style.transform = `scaleX(${(dead ? inv : 0).toFixed(3)})`;
+    text.style.color = dead ? "#8599a8" : running || done ? "#f4f7fa" : "";
+    st.textContent = dead ? `Invalidated · ${A.invalidatedFields.join(", ")} changed` : done ? "Done" : running ? "Running" : "";
+    st.style.color = dead ? "#8599a8" : done ? "#c3e3f9" : "";
+    dot.style.background = done ? "#c3e3f9" : running ? `rgba(195,227,249,${0.35 + 0.65 * Math.abs(Math.sin(t * 4))})` : "transparent";
+    dot.style.borderColor = dead ? "#5d7382" : "#c3e3f9";
+    run.style.opacity = running ? "1" : "0";
+    runFill.style.transform = `translateX(${(((t * 0.9) % 1) * 360 - 120).toFixed(1)}%)`;
   });
+  const rh = k(t, [BEATS.resultsIn, BEATS.resultsIn + 0.4]);
+  resHead.style.opacity = rh.toFixed(3);
   resEls.forEach((li, i) => {
-    const a = BEATS.resultsIn + 0.45 + i * BEATS.resultsStagger;
+    const a = BEATS.resultsIn + 0.15 + i * BEATS.resultsStagger;
     const ri = k(t, [a, a + 0.5]);
     li.style.opacity = ri.toFixed(3);
     li.style.transform = `translateY(${lerp(22, 0, ri).toFixed(2)}px)`;
   });
-  const ci = k(t, BEATS.calendarIn);
-  show(cal, ci, lerp(18, 0, ci));
 
   // subtitles
-  const cue = cueEls.find(({ c }) => t >= c.window[0] - 0.1 && t < c.window[1] + 0.9) || null;
+  const cue = cueEls.find(({ c }) => t >= c.window[0] - 0.1 && t < c.window[1] + CUE_HOLD) || null;
   if (cue !== mountedCue) {
     subLine.replaceChildren(...(cue ? cue.words : []));
     subSpeaker.textContent = cue ? (cue.c.interrupt ? "You, interrupting" : cue.c.speaker) : "";
@@ -313,7 +272,7 @@ function render(t) {
   sub.style.transform = `translateY(${lerp(1170, 1560, sd).toFixed(2)}px) scale(${lerp(1, 0.78, sd).toFixed(4)})`;
   if (cue) {
     const [, b] = cue.c.window;
-    sub.style.opacity = clamp((b + 0.9 - t) / 0.35).toFixed(3);
+    sub.style.opacity = clamp((b + CUE_HOLD - t) / 0.3).toFixed(3);
     cue.words.forEach((el, i) => {
       const wi = k(t, [cue.c.words[i].s, cue.c.words[i].s + 0.22]);
       el.style.opacity = wi.toFixed(3);
@@ -361,7 +320,7 @@ const ui = (() => {
     shotBox.append(b);
     return b;
   });
-  const flag = $("span", "fl-flag", session.source === "mock" ? "MOCK DATA" : session.source.toUpperCase());
+  const flag = $("span", "fl-flag", SOURCE.toUpperCase());
   bar.append(play, scrub, time, shotBox, flag);
   play.onclick = () => (playing ? pause() : start());
   scrub.oninput = () => { pause(); seek(+scrub.value); };
@@ -420,4 +379,4 @@ const ready = document.fonts.ready.then(() => {
 });
 
 // capture / automation hook: deterministic frame access
-window.FILM = Object.freeze({ duration: DURATION, fps: FPS, shots: SHOTS, cues, source: session.source, ready, seek: (t) => { pause(); seek(t); }, play: start, pause, now: () => T });
+window.FILM = Object.freeze({ duration: DURATION, fps: FPS, shots: SHOTS, cues, source: SOURCE, ready, seek: (t) => { pause(); seek(t); }, play: start, pause, now: () => T });
