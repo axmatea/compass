@@ -12,6 +12,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY server.mjs package.json ./
+COPY server ./server
 USER node
 EXPOSE 8080
 CMD ["node", "server.mjs"]
