@@ -121,23 +121,45 @@ test('interpreter accepts flat model output and drops unknown keys', () => {
 test('interpreter retries once on a transient timeout', async () => {
   let n = 0;
   const llm = { chat: async () => { n++; if (n === 1) { const e = new Error('t'); e.code = 'timeout'; throw e; } return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"time":"20:00"},"unset":[],"tool":"None","reply":"ok"}' } }] }, latencyMs: 5 }; } };
-  const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'x', tools: [] });
+  const out = await createGlmInterpreter(llm, { modes: ['required'] }).interpret({ state: { intent: {} }, text: 'x', tools: [] });
   assert.equal(n, 2);
   assert.ok(out.retried >= 1);
   assert.equal(out.set.time, '20:00');
   assert.equal(out.tool, null, '"None" string treated as no tool');
 });
 
-test('interpreter falls back from "required" to "auto" when the forced call is empty', async () => {
+test('interpreter falls back from "required" to "auto" when the forced call is empty (sequential)', async () => {
   const modes = [];
   const llm = { chat: async ({ toolChoice }) => {
     modes.push(toolChoice);
     if (toolChoice === 'required') return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{}' } }] }, latencyMs: 5 };
     return { message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"date":"next week"},"unset":[],"tool":null,"reply":"Moved to next week."}' } }] }, latencyMs: 7 };
   } };
-  const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'Can we change it for next week?', tools: [] });
+  const out = await createGlmInterpreter(llm, { parallel: false }).interpret({ state: { intent: {} }, text: 'Can we change it for next week?', tools: [] });
   assert.deepEqual(modes, ['required', 'auto']);
   assert.equal(out.set.date, 'next week');
-  assert.equal(out.mode, 'auto');
   assert.equal(out.latencyMs, 12);
+});
+
+test('interpreter runs modes in parallel: first meaningful wins, empty one ignored, loser aborted', async () => {
+  const aborted = [];
+  const llm = { chat: ({ toolChoice, signal }) => new Promise((resolve) => {
+    signal?.addEventListener('abort', () => aborted.push(toolChoice));
+    const ms = toolChoice === 'required' ? 10 : 40;
+    const args = toolChoice === 'required' ? '{}' : '{"set":{"date":"next week"},"unset":[],"tool":null,"reply":"ok"}';
+    setTimeout(() => resolve({ message: { tool_calls: [{ function: { name: 'update_intent', arguments: args } }] }, latencyMs: ms }), ms);
+  }) };
+  const out = await createGlmInterpreter(llm).interpret({ state: { intent: {} }, text: 'x', tools: [] });
+  assert.equal(out.mode, 'auto');
+  assert.equal(out.set.date, 'next week');
+  const llm2 = { chat: ({ toolChoice, signal }) => new Promise((resolve, reject) => {
+    signal?.addEventListener('abort', () => { aborted.push(toolChoice); reject(Object.assign(new Error('a'), { code: 'aborted' })); });
+    const ms = toolChoice === 'required' ? 10 : 400;
+    setTimeout(() => resolve({ message: { tool_calls: [{ function: { name: 'update_intent', arguments: '{"set":{"time":"20:00"},"unset":[],"tool":null,"reply":"ok"}' } }] }, latencyMs: ms }), ms);
+  }) };
+  const t0 = Date.now();
+  const out2 = await createGlmInterpreter(llm2).interpret({ state: { intent: {} }, text: 'x', tools: [] });
+  assert.equal(out2.mode, 'required');
+  assert.ok(Date.now() - t0 < 200, 'did not wait for the slow mode');
+  assert.ok(aborted.includes('auto'), 'slow mode aborted');
 });

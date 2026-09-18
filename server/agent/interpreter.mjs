@@ -82,12 +82,13 @@ function isMeaningful(obj) {
  * Measured 2026-09-18 on Nebius GLM-5.3 (3 runs x 5 canonical utterances):
  *   tool_choice "required": ~250 ms, but returned {} for "Can we change it for next week?"
  *   tool_choice "auto":     ~450-900 ms, but made no call for "make it 8" / "we are four".
- * No single mode is reliable; "required" first, then "auto" on an empty result covers all cases.
+ * No single mode is reliable; together they cover all cases. By default both run in parallel
+ * and the first meaningful result wins (latency = fastest good answer, ~2x tokens).
  * (Named forced tool_choice also returned {}.)
  */
 export const INTERPRET_MODES = Object.freeze(['required', 'auto']);
 
-export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES } = {}) {
+export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES, parallel = true } = {}) {
   async function once({ state, text, tools, signal }, toolChoice) {
     const attempt = AbortSignal.timeout(attemptTimeoutMs);
     const r = await llm.chat({
@@ -113,25 +114,44 @@ export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 
     return { ...validateInterpretation(parsed), latencyMs: r.latencyMs, mode: toolChoice };
   }
 
+  /** Run all modes in parallel; first meaningful result wins, the rest are aborted. */
+  function race(input) {
+    const controllers = modes.map(() => new AbortController());
+    const signalFor = (i) => (input.signal ? AbortSignal.any([input.signal, controllers[i].signal]) : controllers[i].signal);
+    return new Promise((resolve, reject) => {
+      let pending = modes.length;
+      let lastErr;
+      modes.forEach((mode, i) => {
+        once({ ...input, signal: signalFor(i) }, mode).then(
+          (out) => { controllers.forEach((c, j) => j !== i && c.abort()); resolve(out); },
+          (err) => { lastErr = err; if (--pending === 0) reject(lastErr); },
+        );
+      });
+    });
+  }
+
   return {
     async interpret(input) {
       let lastErr;
-      let spent = 0;
       for (let i = 0; i <= retries; i++) {
-        for (const mode of modes) {
-          try {
-            const out = await once(input, mode);
-            spent += out.latencyMs;
-            return { ...out, latencyMs: spent, ...(i || mode !== modes[0] ? { retried: i + (mode !== modes[0] ? 1 : 0) } : {}) };
-          } catch (err) {
-            lastErr = err;
-            spent += err.latencyMs || 0;
-            // Never retry a user/turn cancellation; non-retryable HTTP errors stop immediately.
-            if (input.signal?.aborted || !['timeout', 'network', 'parse', 'http'].includes(err.code) || (err.code === 'http' && err.status < 500 && err.status !== 429)) throw err;
-          }
+        try {
+          const out = parallel ? await race(input) : await sequential(input);
+          return i ? { ...out, retried: i } : out;
+        } catch (err) {
+          lastErr = err;
+          if (input.signal?.aborted || !['timeout', 'network', 'parse', 'http', 'aborted'].includes(err.code) || (err.code === 'http' && err.status < 500 && err.status !== 429)) throw err;
         }
       }
       throw lastErr;
     },
   };
+
+  async function sequential(input) {
+    let spent = 0; let lastErr;
+    for (const mode of modes) {
+      try { const out = await once(input, mode); return { ...out, latencyMs: spent + out.latencyMs, ...(mode !== modes[0] ? { fellBack: true } : {}) }; }
+      catch (err) { lastErr = err; spent += err.latencyMs || 0; if (input.signal?.aborted) throw err; }
+    }
+    throw lastErr;
+  }
 }
