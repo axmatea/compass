@@ -41,3 +41,12 @@ GitHub is now the working source and Railway is the live host. There is no bidir
 Eight-slide cinematic presentation, timed playback, browser narration, fullscreen, responsive navigation, three scripted conversation paths, editable/downloadable next-step drafts, and local film playback.
 
 The greeting and guided replies are scripted. Open-ended voice AI, cross-session memory, interruption handling and external actions are not implemented. The optional browser speech features depend on browser support and permissions.
+
+## NYC product film
+
+The homepage film now uses `public/media/compass-film-nyc.mp4`: the 60-second,
+1920×1080, 24 fps remake. Its poster and English captions are versioned with the
+new story. The staged conversation moves from a deadline concern to upfront
+payment, ending with an unsent draft. The original film remains in Git history
+and at its original media path. Full production archives are kept outside this
+web repository.
