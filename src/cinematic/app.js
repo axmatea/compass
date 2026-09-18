@@ -1,4 +1,3 @@
-import { createVoiceAdapter } from '../presentation/voice-adapter.js';
 
 // One native-scroll narrative is shared by the website and presentation mode.
 // New generated assets are activated only through the local verified manifest.
@@ -11,25 +10,24 @@ const mobileQuery = window.matchMedia('(max-width: 700px)');
 const worlds = Object.fromEntries([...document.querySelectorAll('[data-media]')].map(el => [el.dataset.media, el]));
 const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
-const voice = createVoiceAdapter();
+const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
- 'We begin with a familiar uncertainty: a client request, a possible yes, and a concern that is not yet clear.',
- 'The person starts with an unfinished thought. This dialogue is prepared; there is no microphone listening.',
- 'COMPASS is a working concept for thinking through uncertainty. The optional hello uses browser speech synthesis.',
- 'The experience should leave room for hesitation. Listening here is a visual simulation, not a working voice engine.',
- 'Separate a confirmed detail from an assumption. Friday was requested; a difficult deadline is only a guess.',
- 'This is the meaningful correction: Friday works, payment is the concern. The button selects a prepared state.',
- 'A relevant next question follows the correction, while the Friday detail remains intact.',
- 'The person chooses the terms: half upfront, half on delivery. No financial outcome is promised.',
- 'This is a real editable field, containing a prepared reply. Edits remain in this tab. Nothing is sent.',
- 'The proposed benefit is returning to real work with one next step. This footage illustrates the concept.',
- 'The guided browser demo exists. Its conversation and context changes are scripted. Open-ended voice, memory and external actions are not built.',
- 'The next step is to try the prepared demo, then test a narrow voice prototype. Reliability and latency are not yet measured.'
+ 'Plans change mid-sentence. COMPASS is a voice agent that keeps up: it adapts while it acts.',
+ 'One plain sentence: dinner tomorrow at 7, Italian. No form, no settings.',
+ 'COMPASS. It does not just answer you. It adapts while acting.',
+ 'The sentence becomes a structured plan: Dinner, Tomorrow, 7:00 PM, Italian.',
+ 'COMPASS starts acting immediately: it begins looking for a table at 7:00 PM.',
+ 'Mid-action, the user changes their mind: make it 8, near Palo Alto. This is the moment that matters.',
+ 'Only what changed changes. Dinner, tomorrow and Italian are kept.',
+ '7:00 PM is superseded, 8:00 PM becomes active, and Palo Alto is added.',
+ 'The search is rescoped, not restarted: an Italian table near Palo Alto for 8:00 PM.',
+ 'Speak the way plans actually happen. The footage is illustrative.',
+ 'Try it live at /demo: say the plan, interrupt it, watch the plan update. Restaurant results are sample data.',
+ 'COMPASS does not just answer. It adapts.'
 ];
 let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
-const originalDraft = $('#reply').value;
 let media = {};
 const sceneMedia = { 0: 'chaos', 1: 'speak', 9: 'progress' };
 const orbPos = [
@@ -58,18 +56,18 @@ function correct(announce = true) {
  corrected = true;
  $('#scene-6').classList.add('is-corrected');
  $('.new-concern').hidden = false;
- $('#correct').textContent = 'Correction kept ✓';
+ $('#correct').textContent = 'Plan updated ✓';
  $('#correct').setAttribute('aria-pressed', 'true');
- $('#correction-note').textContent = 'FRIDAY STAYS · PAYMENT IS THE CONCERN';
- if (announce) $('#announcement').textContent = 'Prepared correction selected. Friday works. The concern is payment.';
+ $('#correction-note').textContent = 'KEPT · DINNER, TOMORROW, ITALIAN';
+ if (announce) $('#announcement').textContent = 'Interrupted. 7:00 PM is superseded. 8:00 PM near Palo Alto is active. Dinner, tomorrow and Italian are kept.';
 }
 function resetCorrection() {
  corrected = false;
  $('#scene-6').classList.remove('is-corrected');
  $('.new-concern').hidden = true;
- $('#correct').innerHTML = 'Correct the assumption <span aria-hidden="true">↗</span>';
+ $('#correct').innerHTML = 'Interrupt <span aria-hidden="true">↗</span>';
  $('#correct').setAttribute('aria-pressed', 'false');
- $('#correction-note').textContent = 'SELECT A PREPARED CORRECTION';
+ $('#correction-note').textContent = 'MID-ACTION. NO RESTART.';
 }
 function setActive(index) {
  if (index === active) return;
@@ -195,15 +193,6 @@ $('#play-story').addEventListener('click', () => playStory());
 $('#replay').addEventListener('click', () => { stopAuto(); resetCorrection(); goTo(0); });
 $('#correct').addEventListener('click', () => { stopAuto(); correct(); });
 $('#correct').setAttribute('aria-pressed', 'false');
-$('#reset-draft').addEventListener('click', () => { $('#reply').value = originalDraft; $('#announcement').textContent = 'The prepared draft has been restored. Nothing was sent.'; });
-$('#greeting').addEventListener('click', () => {
- stopAuto();
- voice.speak('Hi. I’m COMPASS. Start with what’s on your mind. This is a scripted preview of a conversation that helps you find a next step.', {
-  onState(state, detail) {
-   $('#voice-state').textContent = state === 'preparing' ? 'Preparing browser voice…' : state === 'speaking' ? 'Scripted browser greeting' : state === 'unavailable' ? detail : '';
-  }
- });
-});
 function togglePanel(button, panel) {
  const open = panel.hidden;
  panel.hidden = !open;
@@ -258,7 +247,29 @@ reducedQuery.addEventListener('change', () => { stopAuto(); motionPaused = reduc
 new ResizeObserver(measure).observe($('#story'));
 measure(); updateMotion(); render();
 if (location.hash === '#present') presentationMode();
+
+// Header status reflects what /demo will actually do (same probe the demo uses). Never claims live unless verified.
+let demoStatus = 'unknown';
+fetch('/api/health', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null).then(h => {
+ demoStatus = h && h.ok && h.nebius && h.nebius.configured ? 'live' : 'recorded';
+ const el = $('#demo-status');
+ el.querySelector('[data-status-text]').textContent = demoStatus === 'live' ? 'Live demo' : 'Demo replays a recorded live session';
+ el.hidden = false;
+});
+
+// Website -> /demo: the orb carries over. Cross-document view transition where supported,
+// otherwise a short orb-centering handoff before navigating.
+document.addEventListener('click', event => {
+ const link = event.target.closest('a[data-to-demo]');
+ if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+ stopAuto();
+ if (reducedQuery.matches || motionPaused || 'onpagereveal' in window) return; // native view transition (or no motion) handles it
+ event.preventDefault();
+ document.body.classList.add('to-demo');
+ setTimeout(() => { location.href = link.href; }, 420);
+});
+window.addEventListener('pageshow', () => document.body.classList.remove('to-demo'));
 window.COMPASS = Object.freeze({
  goTo(index) { stopAuto(); goTo(index); },
- getState() { return { scene: active + 1, playing, motionPaused, reducedMotion: reducedQuery.matches, corrected, mode: location.hash === '#present' ? 'presentation' : 'website', liveVoice: false }; }
+ getState() { return { scene: active + 1, playing, motionPaused, reducedMotion: reducedQuery.matches, corrected, mode: location.hash === '#present' ? 'presentation' : 'website', demo: demoStatus }; }
 });

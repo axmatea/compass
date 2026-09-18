@@ -9,6 +9,7 @@ import type { Listener } from './speech'
 import { createTransport } from './transport'
 import type { TransportMode } from './transport'
 import type { AgentEvent, FieldName, Intent, OrbState, PatchOp, SearchResult, Turn } from './types'
+import { t } from './i18n'
 
 export interface ActionView {
   id: string
@@ -41,7 +42,8 @@ export function useCompassAgent() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [interim, setInterim] = useState('')
   const [caption, setCaption] = useState<{ text: string; key: number; msPerWord: number } | null>(null)
-  const [servedBy, setServedBy] = useState<TransportMode>(transport.mode)
+  const [servedBy, setServedBy] = useState<TransportMode | null>(null)
+  const modeRef = useRef<TransportMode | null>(null)
   const [micOn, setMicOn] = useState(false)
   const [voiceOn, setVoiceOn] = useState(true)
   const [notice, setNotice] = useState('')
@@ -74,8 +76,9 @@ export function useCompassAgent() {
   useEffect(() => {
     setMicSupported(recognitionSupported())
     setVoiceSupported(speaker.supported())
+    void transport.ready().then(m => { modeRef.current = m; setServedBy(m) })
     return () => { speaker.stop(); listenerRef.current?.stop(); timers.current.forEach(clearTimeout) }
-  }, [speaker])
+  }, [speaker, transport])
   useEffect(() => { voiceOnRef.current = voiceOn; if (!voiceOn) speaker.stop() }, [voiceOn, speaker])
 
   /* ---------- voice out ---------- */
@@ -160,9 +163,9 @@ export function useCompassAgent() {
       if (myEpoch !== epoch.current) return
       if (!sessionRef.current) sessionRef.current = res.sessionId
       setServedBy(res.servedBy)
-      if (res.servedBy === 'mock' && transport.mode === 'live') setNotice('Backend unreachable. This turn replayed the recorded session.')
+      if (res.servedBy === 'mock' && modeRef.current === 'live') setNotice(t.notice.unreachable)
     } catch (err) {
-      if (myEpoch === epoch.current && (err as Error).name !== 'AbortError') { setNotice('That turn failed. Try again.'); setThinking(false) }
+      if (myEpoch === epoch.current && (err as Error).name !== 'AbortError') { setNotice(t.notice.failed); setThinking(false) }
     } finally {
       inflight.current--
       if (!inflight.current && !sessionRef.current) sessionWaiters.current.splice(0).forEach(w => w(undefined as unknown as string))
@@ -199,8 +202,8 @@ export function useCompassAgent() {
       onEnd: () => { micOnRef.current = false; setMicOn(false); setInterim('') },
     })
     listenerRef.current = listener
-    if (listener.start()) { micOnRef.current = true; setMicOn(true); setNotice('Listening. Talk over COMPASS any time to interrupt. Headphones give the cleanest barge-in.') }
-    else setNotice('Voice input is not available in this browser. Type instead, or use the prepared lines.')
+    if (listener.start()) { micOnRef.current = true; setMicOn(true); setNotice(t.notice.listening) }
+    else setNotice(t.notice.noVoice)
   }, [interrupt, submit])
 
   const reset = useCallback(() => {
@@ -214,7 +217,7 @@ export function useCompassAgent() {
   }, [stopSpeech, transport])
 
   return {
-    orb, plan, actions, holding, turns, interim, caption, servedBy, mode: transport.mode, revisions,
+    orb, plan, actions, holding, turns, interim, caption, servedBy, revisions,
     micOn, micSupported, voiceOn, voiceSupported, notice,
     setVoiceOn, submit, interrupt, toggleMic, reset,
     hasPlan: Boolean(plan),

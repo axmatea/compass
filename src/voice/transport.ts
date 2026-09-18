@@ -1,8 +1,9 @@
 /**
  * Turn transport. Identical contract (v1) for both modes; the UI never branches on mode.
- *   mock (default): replay of the recorded backend session (mockBackend.ts).
  *   live: POST /api/turn with Accept: text/event-stream on the same origin. Keys stay server-side.
- * Switch: ?backend=live in the URL, or VITE_COMPASS_BACKEND=live at build time.
+ *   mock: replay of the recorded backend session (mockBackend.ts).
+ * Default (auto): live when GET /api/health reports the model configured, otherwise mock.
+ * Override: ?backend=live|mock in the URL, or VITE_COMPASS_BACKEND at build time.
  * VITE_COMPASS_API_URL overrides the endpoint (default /api/turn).
  * If live is unreachable (network error or non-2xx before any event), the turn falls back to mock and is flagged.
  */
@@ -12,7 +13,8 @@ import type { AgentEvent, TurnRequest, TurnResponse } from './types'
 export type TransportMode = 'mock' | 'live'
 export interface SendOptions { onEvent: (e: AgentEvent) => void; signal?: AbortSignal }
 export interface TurnTransport {
-  readonly mode: TransportMode
+  /** Resolved mode (auto-detected once). */
+  ready(): Promise<TransportMode>
   send(req: TurnRequest, opts: SendOptions): Promise<TurnResponse & { servedBy: TransportMode }>
   reset(): void
 }
@@ -20,10 +22,19 @@ export interface TurnTransport {
 type ViteEnv = { env?: Record<string, string | undefined> }
 const env = (import.meta as ImportMeta & ViteEnv).env ?? {}
 
-export function resolveMode(): TransportMode {
+export function requestedMode(): TransportMode | 'auto' {
   const q = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('backend') : null
-  const v = (q ?? env.VITE_COMPASS_BACKEND ?? 'mock').toLowerCase()
-  return v === 'live' ? 'live' : 'mock'
+  const v = (q ?? env.VITE_COMPASS_BACKEND ?? 'auto').toLowerCase()
+  return v === 'live' ? 'live' : v === 'mock' ? 'mock' : 'auto'
+}
+
+async function detect(): Promise<TransportMode> {
+  try {
+    const r = await fetch('/api/health', { cache: 'no-store' })
+    if (!r.ok) return 'mock'
+    const h = await r.json() as { ok?: boolean; nebius?: { configured?: boolean } }
+    return h.ok && h.nebius?.configured ? 'live' : 'mock'
+  } catch { return 'mock' }
 }
 
 class Unreachable extends Error {}
@@ -63,10 +74,13 @@ async function sse(endpoint: string, req: TurnRequest, { onEvent, signal }: Send
   return result
 }
 
-export function createTransport(mode: TransportMode = resolveMode(), endpoint = env.VITE_COMPASS_API_URL ?? '/api/turn'): TurnTransport {
+export function createTransport(requested: TransportMode | 'auto' = requestedMode(), endpoint = env.VITE_COMPASS_API_URL ?? '/api/turn'): TurnTransport {
+  let resolved: Promise<TransportMode> | null = null
+  const ready = () => (resolved ??= requested === 'auto' ? detect() : Promise.resolve(requested))
   return {
-    mode,
+    ready,
     async send(req, opts) {
+      const mode = await ready()
       if (mode === 'mock') return { ...(await mockTurn(req, opts.onEvent, opts.signal)), servedBy: 'mock' }
       try {
         return { ...(await sse(endpoint, req, opts)), servedBy: 'live' }

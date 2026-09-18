@@ -33,8 +33,11 @@ export function createSpeaker(): Speaker {
     const id = token
     if (!supported()) { callback('unavailable', 'Browser voice unavailable.'); callback = null; return }
     const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'; u.rate = 1.02
-    const voices = window.speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang))
+    u.rate = 1.02
+    // English voice only for Latin-script text; otherwise let the browser pick a voice for the content.
+    const latin = !/[^\u0000-\u024F\u2000-\u206F]/.test(text)
+    if (latin) u.lang = 'en-US'
+    const voices = latin ? window.speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang)) : []
     u.voice = voices.find(v => v.localService && /Samantha|Ava|Allison|Victoria|Serena|Karen|Moira|Fiona|Susan|Zira|Aria|Jenny/i.test(v.name)) || voices.find(v => v.localService) || voices[0] || null
     let started = false
     callback('preparing')
@@ -81,7 +84,7 @@ export interface Listener { start(): boolean; stop(): void; readonly active: boo
 export const recognitionSupported = () => typeof window !== 'undefined' && Boolean((window as SpeechWindow).SpeechRecognition || (window as SpeechWindow).webkitSpeechRecognition)
 
 /** Continuous listener. Chrome ends sessions after silence; we restart while `wanted` is true. */
-export function createListener(h: ListenerHandlers): Listener {
+export function createListener(h: ListenerHandlers, lang = 'en-US'): Listener {
   let rec: BrowserRecognition | null = null
   let wanted = false
   let restarts = 0
@@ -90,7 +93,7 @@ export function createListener(h: ListenerHandlers): Listener {
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Ctor) return false
     const r = new Ctor()
-    r.lang = 'en-US'; r.continuous = true; r.interimResults = true
+    r.lang = lang; r.continuous = true; r.interimResults = true
     r.onresult = e => {
       if (rec !== r) return
       let interim = ''
@@ -127,7 +130,7 @@ export function createListener(h: ListenerHandlers): Listener {
 /** Echo guard: a mic without headphones hears COMPASS itself. Ignore speech that mostly repeats what is being spoken. */
 export function isEcho(heard: string, speaking: string | null): boolean {
   if (!speaking) return false
-  const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9: ]+/g, ' ').split(/\s+/).filter(Boolean)
+  const words = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}: ]+/gu, ' ').split(/\s+/).filter(Boolean)
   const h = words(heard); if (!h.length) return true
   const said = new Set(words(speaking))
   const overlap = h.filter(w => said.has(w)).length / h.length

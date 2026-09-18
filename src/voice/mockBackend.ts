@@ -20,7 +20,7 @@ const TIMELINE: AgentEvent[] = (() => {
   return out.sort((a, b) => at(a) - at(b))
 })()
 
-const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean)
+const words = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').split(/\s+/).filter(Boolean)
 function matchTurn(text: string): number {
   const heard = new Set(words(text))
   return TURNS.findIndex(t => { const w = words(t.request.text); return w.filter(x => heard.has(x)).length / w.length >= 0.6 })

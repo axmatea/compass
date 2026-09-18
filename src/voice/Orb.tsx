@@ -1,9 +1,8 @@
 import type { OrbState } from './types'
 
-export const ORB_LABEL: Record<OrbState, string> = {
-  idle: 'Ready', listening: 'Listening', thinking: 'Thinking', acting: 'Acting',
-  speaking: 'Speaking', interrupted: 'Interrupted', replanning: 'Replanning',
-}
+import { t } from './i18n'
+
+export const ORB_LABEL: Record<OrbState, string> = t.orb
 
 /**
  * Same glass orb as the website (src/cinematic: aura, surface, core, edge), plus live-state layers.

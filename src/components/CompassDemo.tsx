@@ -1,18 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
-import Orb, { ORB_LABEL } from '../voice/Orb'
+import Orb from '../voice/Orb'
 import { isBusy, useCompassAgent } from '../voice/useCompassAgent'
 import type { ActionView, PlanView } from '../voice/useCompassAgent'
-import { FIELD_ORDER, formatValue, labelFor, time12, toolLabel } from '../voice/format'
+import { FIELD_ORDER, formatValue, labelFor, time12 } from '../voice/format'
+import { t } from '../voice/i18n'
 import type { FieldValue, PatchOp } from '../voice/types'
 import './compass-demo.css'
 
+/** Prepared example lines are content (what a user might say), not UI labels. */
 const LINE_START = 'Schedule dinner tomorrow at 7 and find an Italian restaurant.'
 const LINE_CHANGE = 'Actually make it 8. Somewhere near Palo Alto.'
 
-function Mark() {
-  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m16.8 4.9-2.9 9-9 5.2 5.2-9 9-2.9-5.2 7.8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" /><path d="M12 1v2M12 21v2M1 12h2M21 12h2" stroke="currentColor" strokeWidth="1.15" /></svg>
-}
 function Mic() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.4" /><path d="M6 11a6 6 0 0 0 12 0m-6 6v4m-3 0h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
 }
@@ -22,10 +21,11 @@ function Arrow() {
 function Speaker({ on }: { on: boolean }) {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 5 6 9H3v6l5 4V5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />{on ? <path d="M15 9a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /> : <path d="m16 9 5 6m0-6-5 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />}</svg>
 }
+function Restart() {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+}
 
-const TAG: Record<string, string> = { kept: 'kept', changed: 'updated', added: 'added', removed: 'removed' }
-
-/** Render state straight from the v1 patch op: kept | active+updated | active+added | active+removed. */
+/** v1 patch op -> render class only: kept | active+updated | active+added | active+removed. */
 function slotStatus(op: PatchOp | undefined, value: FieldValue, revision: boolean): string {
   if (op?.status === 'kept') return 'kept'
   if (op?.status === 'active') return op.change === 'updated' ? 'changed' : op.change === 'removed' ? 'removed' : revision ? 'added' : 'new'
@@ -38,37 +38,39 @@ function Plan({ plan }: { plan: PlanView }) {
     const op = plan.patch.find(o => o.field === f)
     const status = slotStatus(op, plan.intent[f], plan.revision)
     const previous = op && op.status === 'active' && (op.change === 'updated' || op.change === 'removed') ? formatValue(f, op.from) : null
+    const value = formatValue(f, plan.intent[f])
     return (
       <li key={f} className={'cv-slot is-' + status}>
         <span className="cv-slot-label">{labelFor(f)}</span>
         <span className="cv-slot-values" key={f + '-' + plan.version}>
-          {previous && <span className="cv-old"><s>{previous}</s><em>superseded</em></span>}
-          <span className="cv-val">{formatValue(f, plan.intent[f]) ?? (f === 'location' ? 'Anywhere' : 'Not set')}</span>
+          {previous && <span className="cv-old"><s dir="auto">{previous}</s><em>{t.superseded}</em></span>}
+          <span className="cv-val" dir="auto">{value ?? (f === 'location' ? t.anywhere : t.notSet)}</span>
         </span>
-        {TAG[status] && <span className="cv-tag" key={'t' + plan.version}>{TAG[status]}</span>}
+        {t.tag[status] && status !== 'kept' && <span className="cv-tag" key={'t' + plan.version}>{t.tag[status]}</span>}
+        {status === 'kept' && <span className="cv-kept" key={'k' + plan.version}>{t.tag.kept}</span>}
       </li>
     )
   })}</ul>
 }
 
 function argsLine(args: Record<string, unknown>) {
-  return [args.cuisine, args.location ?? 'current area', args.date, time12((args.time as FieldValue) ?? null)].filter(Boolean).map(v => formatValue('x', v as FieldValue)).join(' · ')
+  return [args.cuisine, args.location ?? t.act.currentArea, args.date, time12((args.time as FieldValue) ?? null)].filter(Boolean).map(v => formatValue('x', v as FieldValue)).join(' · ')
 }
 
 function ActionRow({ a, current, holding }: { a: ActionView; current: boolean; holding: boolean }) {
   const phase = a.status === 'running' && holding ? 'paused' : a.status
-  const status = phase === 'running' ? 'Searching' : phase === 'paused' ? 'Paused, listening' : phase === 'done' ? `${a.result?.results.length ?? 0} results` : phase === 'invalidated' ? `Invalidated by new ${(a.changedFields ?? []).map(labelFor).join(' + ').toLowerCase()}` : 'Stopped'
+  const status = phase === 'running' ? t.act.running : phase === 'paused' ? t.act.paused : phase === 'done' ? t.act.results(a.result?.results.length ?? 0) : phase === 'invalidated' ? t.act.invalidated((a.changedFields ?? []).map(f => labelFor(f).toLocaleLowerCase())) : t.act.stopped
   return (
     <div className={'cv-act is-' + phase + (current ? ' is-current' : '')}>
-      <div className="cv-act-head"><span className="cv-act-args">{argsLine(a.args)}</span><span className="cv-act-status">{status}</span></div>
+      <div className="cv-act-head"><span className="cv-act-args" dir="auto">{argsLine(a.args)}</span><span className="cv-act-status">{status}</span></div>
       <div className="cv-progress"><span key={a.run} /></div>
-      {current && a.status === 'done' && a.result && <ul className="cv-results">{a.result.results.map((r, i) => <li key={a.id + i} style={{ animationDelay: i * 90 + 'ms' }}><b>{r.name}</b><span>{r.area ?? 'Nearby'} · {r.distanceKm.toFixed(1)} km</span><small>{time12(r.availableAt) ?? ''}</small></li>)}</ul>}
+      {current && a.status === 'done' && a.result && <ul className="cv-results">{a.result.results.map((r, i) => <li key={a.id + i} style={{ animationDelay: i * 90 + 'ms' }}><b dir="auto">{r.name}</b><span dir="auto">{r.area ?? t.act.nearby} · {t.act.km(r.distanceKm)}</span><small>{time12(r.availableAt) ?? ''}</small></li>)}</ul>}
     </div>
   )
 }
 
 function Caption({ text, msPerWord }: { text: string; msPerWord: number }) {
-  return <p className="cv-caption">{text.split(/\s+/).map((w, i) => <span key={i} style={{ animationDelay: i * msPerWord + 'ms' }}>{w} </span>)}</p>
+  return <p className="cv-caption" dir="auto">{text.split(/(\s+)/).map((w, i) => (/^\s+$/.test(w) ? w : <span key={i} style={{ animationDelay: (i / 2) * msPerWord + 'ms' }}>{w}</span>))}</p>
 }
 
 export default function CompassDemo() {
@@ -109,86 +111,67 @@ export default function CompassDemo() {
 
   const nextLine = a.hasPlan ? LINE_CHANGE : LINE_START
   const current = a.actions[a.actions.length - 1]
-  const changes = a.plan?.revision ? a.plan.patch.filter(op => op.status === 'active') : []
+  const hint = a.orb === 'interrupted' ? t.hint.interrupted : a.orb === 'thinking' ? t.hint.thinking : a.orb === 'replanning' ? t.hint.replanning : a.orb === 'acting' ? t.hint.acting : a.hasPlan ? t.hint.idleWithPlan : t.hint.idle
 
   return (
     <div className="compass-demo cv">
-      <div className="cd-disclosure"><span className="cd-disclosure-dot" />
-        {a.servedBy === 'live' ? 'Live · /api/turn (Nebius GLM-5.3) · Restaurant results are mock data · Browser voice' : 'Replay of a recorded live session (same /api/turn v1 events) · Restaurant results are mock data'}
-      </div>
-      <div className="cv-shell" data-state={a.orb}>
-        <div className="cv-toolbar">
-          <div className="cv-identity"><Mark /><span>COMPASS</span><span className="cv-state-pill" aria-live="polite"><i />{ORB_LABEL[a.orb]}</span></div>
-          <div className="cv-tools">
-            <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title="COMPASS speaks replies with your browser voice"><Speaker on={a.voiceOn} /><span>{a.voiceOn ? 'Voice on' : 'Muted'}</span></button>
-            <button type="button" className="cv-icon-btn" onClick={a.reset} aria-label="Reset session"><span aria-hidden="true">↺</span><span>Reset</span></button>
-          </div>
+      <div className={'cv-shell' + (a.hasPlan ? ' has-plan' : '')} data-state={a.orb}>
+        <div className="cv-corner">
+          <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title={t.voiceTitle}><Speaker on={a.voiceOn} /><span className="cv-sr">{a.voiceOn ? t.voiceOn : t.voiceOff}</span></button>
+          <button type="button" className="cv-icon-btn" onClick={a.reset} title={t.reset}><Restart /><span className="cv-sr">{t.reset}</span></button>
         </div>
 
         <div className="cv-stage">
           <div className="cv-voice">
             <div className="cv-orb-wrap">
               <Orb state={a.orb} />
-              <p className="cv-orb-label" aria-hidden="true">{ORB_LABEL[a.orb]}</p>
+              <p className="cv-orb-label" aria-live="polite">{t.orb[a.orb]}</p>
             </div>
             <div className="cv-live" aria-live="polite">
-              {a.interim ? <p className="cv-interim">“{a.interim}”</p>
+              {a.interim ? <p className="cv-interim" dir="auto">“{a.interim}”</p>
                 : a.orb === 'speaking' && a.caption ? <Caption key={a.caption.key} text={a.caption.text} msPerWord={a.caption.msPerWord} />
-                : a.orb === 'interrupted' ? <p className="cv-hint">Stopped. Listening to you.</p>
-                : a.orb === 'thinking' ? <p className="cv-hint">Understanding what changed…</p>
-                : a.orb === 'replanning' ? <p className="cv-hint">Updating the plan, keeping the rest.</p>
-                : a.orb === 'acting' ? <p className="cv-hint">Working on it. Interrupt any time.</p>
-                : <p className="cv-hint">{a.hasPlan ? 'Change anything. COMPASS adapts mid-action.' : 'Say what you need, then change your mind mid-action.'}</p>}
+                : <p className="cv-hint">{hint}</p>}
             </div>
 
             <div className="cv-dock">
               <div className="cv-controls">
-                <button type="button" className={'cv-mic' + (a.micOn ? ' is-on' : '')} onClick={a.toggleMic} disabled={!a.micSupported} aria-pressed={a.micOn} title={a.micSupported ? 'Hands-free: talk, and talk over COMPASS to interrupt' : 'Voice input not supported in this browser'}>
-                  <Mic /><span>{a.micOn ? 'Listening' : 'Talk'}</span>
+                <button type="button" className={'cv-mic' + (a.micOn ? ' is-on' : '')} onClick={a.toggleMic} disabled={!a.micSupported} aria-pressed={a.micOn} title={a.micSupported ? t.micTitle : t.micUnsupported}>
+                  <Mic /><span>{a.micOn ? t.listening : t.talk}</span>
                 </button>
-                {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title="Interrupt (Esc)">Interrupt</button>}
+                {busy && <button type="button" className="cv-stop" onClick={() => a.interrupt()} title={t.interruptTitle}>{t.interrupt}</button>}
               </div>
-
               <div className="cv-script">
-                <span className="cv-script-label">{busy && a.hasPlan ? 'Interrupt with' : a.hasPlan ? 'Change the plan' : 'Try saying'}</span>
+                <span className="cv-script-label">{busy && a.hasPlan ? t.interruptLabel : a.hasPlan ? t.changeLabel : t.tryLabel}</span>
                 <button type="button" className={'cv-line' + (busy && a.hasPlan ? ' is-urgent' : '')} onClick={() => a.submit(nextLine)}>
                   <span>“{nextLine}”</span><Arrow />
                 </button>
               </div>
-
               <form className="cv-composer" onSubmit={send}>
-                <label htmlFor="cv-input" className="cv-sr">Type to COMPASS</label>
-                <input id="cv-input" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? 'Type to interrupt…' : 'Or type it…'} maxLength={500} autoComplete="off" />
-                <button type="submit" disabled={!draft.trim()} aria-label="Send"><Arrow /></button>
+                <label htmlFor="cv-input" className="cv-sr">{t.typeLabel}</label>
+                <input id="cv-input" dir="auto" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={onKeyDown} placeholder={busy ? t.typeToInterrupt : t.typePlaceholder} maxLength={500} autoComplete="off" />
+                <button type="submit" disabled={!draft.trim()} aria-label={t.send}><Arrow /></button>
               </form>
-
             </div>
 
-            <ol className="cv-log" ref={logRef} aria-label="Conversation">
-              {a.turns.slice(-6).map(t => <li key={t.id} className={'cv-turn is-' + t.who + (t.interrupted ? ' is-cut' : '')}><span>{t.who === 'user' ? 'You' : 'COMPASS'}</span><p>{t.text}{t.interrupted && <em> · cut off</em>}</p></li>)}
-            </ol>
+            {a.turns.length > 0 && <ol className="cv-log" ref={logRef} aria-label={t.transcript}>
+              {a.turns.slice(-4).map(x => <li key={x.id} className={'cv-turn is-' + x.who + (x.interrupted ? ' is-cut' : '')}><span>{x.who === 'user' ? t.you : t.compass}</span><p dir="auto">{x.text}{x.interrupted && <em> · {t.cutOff}</em>}</p></li>)}
+            </ol>}
             <p className="cv-notice" role="status">{a.notice}</p>
           </div>
 
-          <div className="cv-plan-col" ref={planRef}>
-            <section className={'cv-plan' + (a.orb === 'replanning' ? ' is-replanning' : '')} aria-label="Current plan" aria-live="polite">
-              <header><span className="cv-eyebrow">The plan</span>{a.plan && <span className={'cv-rev' + (a.revisions ? ' is-revised' : '')} key={a.plan.version}>v{a.plan.version}{a.revisions ? ' · revised' : ''}</span>}</header>
-              {a.plan ? <Plan plan={a.plan} />
-                : <div className="cv-plan-empty"><span className="cv-ghost" /><span className="cv-ghost" /><span className="cv-ghost" /><p>Your plan appears here as COMPASS understands it.</p></div>}
-            </section>
-
-            <section className={'cv-action' + (current ? '' : ' is-idle')} aria-label="Action in progress">
-              <header><span className="cv-eyebrow">Action</span><span className="cv-tool-name">{current ? toolLabel(current.tool) + (current.mock ? ' · mock' : '') : 'Waiting for a plan'}</span></header>
+          <div className="cv-plan-col" ref={planRef} aria-hidden={!a.hasPlan}>
+            {a.plan && <section className={'cv-plan' + (a.orb === 'replanning' ? ' is-replanning' : '')} aria-label={t.plan} aria-live="polite">
+              <header><span className="cv-eyebrow">{t.plan}</span>{a.revisions > 0 && <span className="cv-rev" key={a.plan.version}>{t.updated}</span>}</header>
+              <Plan plan={a.plan} />
+            </section>}
+            {current && <section className="cv-action" aria-label={t.action}>
+              <header><span className="cv-eyebrow">{t.action}</span>{current.mock && <span className="cv-tool-name">{t.sampleData}</span>}</header>
               {a.actions.slice(-2).map(x => <ActionRow key={x.id} a={x} current={x === current} holding={a.holding} />)}
-            </section>
-
-            {changes.length > 0 && <section className="cv-changes" aria-label="What changed" key={a.plan!.version}>
-              <span className="cv-eyebrow">What changed</span>
-              <ul>{changes.map(op => <li key={op.field}><span>{labelFor(op.field)}</span>{op.from != null && <s>{formatValue(op.field, op.from)}</s>}{op.from != null && <i aria-hidden="true">→</i>}<b>{formatValue(op.field, op.to) ?? 'removed'}</b></li>)}</ul>
             </section>}
           </div>
         </div>
       </div>
+      {a.servedBy && <p className="cd-disclosure"><span className="cd-disclosure-dot" />{a.servedBy === 'live' ? t.disclosure.live : t.disclosure.recorded}</p>}
     </div>
   )
 }
