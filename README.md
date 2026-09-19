@@ -9,7 +9,8 @@ A voice agent that adapts while acting. Say what you want, change your mind mid-
 
 ## What is implemented (deployed)
 
-- `/` website: opening screen plus a scroll story of one plan changing mid-sentence (illustrative footage).
+- `/` website: sales-first landing for the voice agent that builds websites.
+- `/presentation` (alias `/story`): the hackathon presentation, a 12-scene scroll narrative: speak a website, interrupt mid-build, the site evolves.
 - `/demo` live agent. Voice or typed input. Every turn is reasoned by GLM-5.3 on Nebius through `/api/turn` (SSE, contract v1) and kept as structured intent state (task, date, time, cuisine, location).
 - Corrections mid-action: a follow-up like "Actually make it 8. Somewhere near Palo Alto." patches only the changed fields, marks the old value superseded, cancels the in-flight action and re-runs it with the new state.
 - Voice: Boson Higgs Realtime (speech in, speech out, barge-in) through a server-side WebSocket bridge `/api/voice/realtime`. The API key never reaches the browser. If Boson is unavailable the demo falls back to browser speech and says which voice is active.
@@ -37,7 +38,7 @@ Live checks (need keys): `npm run test:live` (GLM), `npm run probe:boson`, `npm 
 
 ## Source layout
 
-- `index.html`, `src/site/`, `src/cinematic/`: website and story.
+- `index.html`, `story.html`, `src/site/`, `src/cinematic/`: website and presentation.
 - `live.html`, `src/components/`, `src/voice/`: the `/demo` agent UI.
 - `present.html`, `src/presentation/stage/`: presentation.
 - `server.mjs`, `server/`: static server, `/healthz`, `/api/health`, `/api/turn`, voice bridge, intent state, tools.

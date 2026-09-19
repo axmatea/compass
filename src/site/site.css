@@ -35,3 +35,11 @@
   .scene-product.has-film .scene-copy{max-width:none;margin-top:26px}
 }
 @media(prefers-reduced-motion:reduce){.film-slot{transition:none}}
+
+/* Presentation, scene 10: the generated page. */
+.scene-result .browser{margin-top:34px;max-width:900px;box-shadow:0 60px 140px -50px #000,0 0 80px rgba(220,191,124,.1)}
+.scene-result .page{aspect-ratio:16/8.4}
+.scene-result .page-hero h3{font-weight:300;letter-spacing:-.02em;margin:0}
+.scene-result .page-hero p{margin:10px 0 18px}
+.masthead .header-actions a:first-child{opacity:.7}
+@media(max-width:700px){.scene-result .browser{margin-top:22px}.scene-result .page{aspect-ratio:16/11}}
