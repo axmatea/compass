@@ -2,19 +2,22 @@
 //
 // Turn pipeline (per session, interpret+plan is serialized; tool execution is not):
 //   reasoning_status -> interpret (GLM) -> state_patch -> action_invalidated* ->
-//   tool_call* (new or reused) -> say (ack) -> [await actions] -> tool_result* -> say (final) -> done
+//   tool_call* (new or reused) -> [render] -> say (ack) -> [await actions] -> tool_result* -> [render] -> say (final) -> done
 // A later turn may invalidate an earlier turn's in-flight action; the earlier turn
 // then resolves with superseded=true instead of speaking a stale answer.
+//
+// The domain plugin owns what the intent IS (dinner plan, website brief): createState,
+// applyUpdate, describeChanges, optional refine / guardAck / askMissing / render.
 import { randomUUID } from 'node:crypto';
-import { createState, applyUpdate, addAction, updateAction, invalidateActions, findReusableAction } from '../state/intent.mjs';
+import { addAction, updateAction, invalidateActions, findReusableAction } from '../state/intent.mjs';
 import { missingFields } from '../tools/registry.mjs';
-import { detectLang, matchesLang, describeChanges, claimsCompletion, notePlan, t as tr } from '../i18n/lang.mjs';
-import { correctMeridiem, keepHalfOfDay } from './meridiem.mjs';
+import { detectLang, matchesLang, describeChanges, t as tr } from '../i18n/lang.mjs';
+import { dinnerDomain } from '../domains/dinner.mjs';
 
 export { describeChanges };
 const shortId = (p) => `${p}_${randomUUID().slice(0, 8)}`;
 
-export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_000, maxSessions = 500, now = () => Date.now() }) {
+export function createAgentRuntime({ interpreter, tools, domain = dinnerDomain, sessionTtlMs = 30 * 60_000, maxSessions = 500, now = () => Date.now() }) {
   const sessions = new Map();
 
   function sweep() {
@@ -25,7 +28,7 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
 
   function createSession(id = shortId('s')) {
     sweep();
-    const s = { id, state: createState(id), lock: Promise.resolve(), controllers: new Map(), inflight: new Map(), listeners: new Set(), pendingTools: new Set(), lastSeen: now() };
+    const s = { id, state: domain.createState(id), lock: Promise.resolve(), controllers: new Map(), inflight: new Map(), listeners: new Set(), pendingTools: new Set(), lastSeen: now() };
     sessions.set(id, s);
     return s;
   }
@@ -45,15 +48,26 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
     session.state = { ...session.state, status: running ? 'acting' : 'ready' };
   }
 
+  /** Domains with a renderer (website) get a `render` event whenever the picture may have changed. */
+  function emitRender(session, turnId, stage, ctx = {}) {
+    if (!domain.render || (domain.hasContent && !domain.hasContent(session.state))) return;
+    let r;
+    try { r = domain.render(session.state, ctx); } catch (err) { emit(session, 'error', { turnId, code: 'render_failed', message: String(err?.message || err).slice(0, 120) }); return; }
+    emit(session, 'render', { turnId, stage, html: r.html, pending: r.pending, highlight: r.highlight, placeholder: r.placeholder, version: session.state.version });
+  }
+
   function startAction(session, tool, args, turnId) {
     const id = shortId('a');
+    // The latest result of the same tool lets incremental tools keep what is still valid.
+    const prev = [...session.state.actions].reverse().find((a) => a.tool === tool.name && a.result);
+    const previous = prev ? { args: prev.args, result: prev.result } : null;
     setState(session, updateAction(addAction(session.state, { id, tool: tool.name, args, dependsOn: tool.dependsOn }), id, { status: 'running', turnId }));
     const controller = new AbortController();
     session.controllers.set(id, controller);
     emit(session, 'tool_call', { turnId, actionId: id, tool: tool.name, args, mock: tool.mock });
     refreshStatus(session);
 
-    const promise = tool.run(args, { signal: controller.signal }).then(
+    const promise = tool.run(args, { signal: controller.signal, previous }).then(
       (result) => {
         session.controllers.delete(id);
         const a = session.state.actions.find((x) => x.id === id);
@@ -61,6 +75,7 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         setState(session, updateAction(session.state, id, { status: 'done', result }));
         refreshStatus(session);
         emit(session, 'tool_result', { turnId, actionId: id, tool: tool.name, result, mock: tool.mock });
+        emitRender(session, turnId, 'tool_result', { wrote: Array.isArray(result?.wrote) ? result.wrote : [] });
         return { id, result };
       },
       (err) => {
@@ -117,14 +132,14 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
           return { sessionId: session.id, turnId, state: session.state, patch: [], reply: tr(lang).fallback, toolResult: null, error: err.code || 'interpret_failed', events };
         }
 
-        // Explicit "8 in the morning" / "в 9 вечера" overrides the model's dinner-means-PM default.
-        const fixedTime = correctMeridiem(text, interp.set?.time) || keepHalfOfDay(text, interp.set?.time, session.state.intent.time);
-        if (fixedTime) {
-          emit(session, 'reasoning_status', { turnId, stage: 'meridiem_corrected', from: interp.set.time, to: fixedTime });
-          interp = { ...interp, set: { ...interp.set, time: fixedTime }, reply: null };
+        // Domain-specific corrections of the model output (e.g. explicit AM/PM beats the dinner default).
+        const refined = domain.refine?.(text, interp, session.state);
+        if (refined) {
+          emit(session, 'reasoning_status', { turnId, ...refined.note });
+          interp = refined.interp;
         }
 
-        const upd = applyUpdate(session.state, interp, { turnId, text });
+        const upd = domain.applyUpdate(session.state, interp, { turnId, text, lang });
         setState(session, upd.state);
         patch = upd.patch;
         emit(session, 'state_patch', { turnId, patch, changed: upd.changed, rejected: upd.rejected, intent: session.state.intent, latencyMs: interp.latencyMs });
@@ -162,15 +177,22 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         }
 
         refreshStatus(session);
-        ack = interp.reply || describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
+        // The picture follows the brief immediately; sections still being written show as pending.
+        if (upd.changed.length || planned.length) emitRender(session, turnId, 'state_patch', { patch });
+
+        ack = interp.reply || domain.describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
         // GLM sometimes answers in the wrong language; the spoken reply must follow the user.
-        if (ack && !matchesLang(ack, lang)) ack = describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
-        // Never let the model say something was booked/sent/set: only the plan changed.
-        if (claimsCompletion(ack, lang)) {
+        if (ack && !matchesLang(ack, lang)) ack = domain.describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
+        // Never let the model claim more than happened (booked, sent, published, deployed).
+        const guarded = domain.guardAck?.(ack, session.state, lang);
+        if (guarded) {
           emit(session, 'reasoning_status', { turnId, stage: 'completion_claim_removed', text: ack });
-          ack = notePlan(session.state.intent, lang) + (/\b(can't|cannot)\b|не могу|нельзя/i.test(ack) ? (lang === 'ru' ? ' Отправлять и бронировать я не умею.' : " I can't send, book or confirm anything.") : '');
+          ack = guarded;
         }
-        if (!planned.length && waiting.has('location') && !/[?？]\s*$/.test(ack || '')) ack = [ack, tr(lang).askLocation].filter(Boolean).join(' ');
+        if (!planned.length && waiting.size && domain.askMissing) {
+          const q = domain.askMissing(waiting, lang, ack);
+          if (q) ack = [ack, q].filter(Boolean).join(' ');
+        }
         if (ack) emit(session, 'say', { turnId, text: ack, final: planned.length === 0 });
       } finally {
         release();
@@ -191,8 +213,8 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         const action = session.state.actions.find((a) => a.id === first.id);
         const tool = tools.get(action.tool);
         toolResult = { actionId: first.id, tool: action.tool, mock: tool.mock, result: first.result };
-        reply = [describeChanges(patch, lang), tool.summarize(first.result, session.state.intent, lang)].filter(Boolean).join(' ');
-        emit(session, 'say', { turnId, text: reply, final: true });
+        reply = [domain.describeChanges(patch, lang), tool.summarize(first.result, session.state.intent, lang)].filter(Boolean).join(' ');
+        if (reply) emit(session, 'say', { turnId, text: reply, final: true });
       } else if (planned.length && outcomes.some((o) => o.error)) {
         reply = tr(lang).toolFailed;
         emit(session, 'say', { turnId, text: reply, final: true });
@@ -212,5 +234,12 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
     return () => session.listeners.delete(fn);
   }
 
-  return { createSession, getSession, runTurn, subscribe, _sessions: sessions };
+  /** Current rendering of a session (domains with a renderer only). */
+  function render(sessionId) {
+    const session = getSession(sessionId);
+    if (!session || !domain.render) return null;
+    return domain.render(session.state);
+  }
+
+  return { createSession, getSession, runTurn, subscribe, render, domain, _sessions: sessions };
 }

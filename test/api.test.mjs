@@ -32,7 +32,9 @@ test('health exposes presence flags only, never secrets', async () => {
   const j = JSON.parse(text);
   assert.equal(j.nebius.configured, true);
   assert.equal(j.boson.configured, true);
-  assert.equal(j.voiceProvider, 'auto');
+  assert.equal(j.voiceRequested, 'auto');
+  assert.equal(j.voice.provider, 'boson'); // no GRADIUM_API_KEY in this test env
+  assert.equal(j.llm.configured, true);
 });
 
 test('voice providers: boson active when key configured, browser is fallback', async () => {

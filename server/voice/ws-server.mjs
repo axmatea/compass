@@ -1,13 +1,17 @@
-// Browser-facing realtime voice endpoint: ws(s)://<host>/api/voice/realtime[?sessionId=...]
+// Browser-facing realtime voice endpoint: ws(s)://<host>/api/voice/realtime[?sessionId=...][&domain=site]
 // Close codes: 4503 Boson not configured (client falls back to browser speech),
 //              4502 upstream failed, 4429 too many voice connections.
 import { WebSocketServer } from 'ws';
 import { createRealtimeBridge } from './realtime-bridge.mjs';
 import { connectBoson } from './boson-realtime.mjs';
+import { createGradiumBridge } from './gradium-bridge.mjs';
+import { connectGradium } from './gradium.mjs';
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
-export function attachVoiceServer(httpServer, { runtime, config, connectUpstream, maxPerIp = 3, maxTotal = 20, logger = console }) {
+export function attachVoiceServer(httpServer, { runtime, runtimes = null, config, connectUpstream, connectGradiumUpstream, maxPerIp = 3, maxTotal = 20, logger = console }) {
+  // Provider: config.voiceProvider (gradium | boson | browser). Test doubles: connectUpstream (Boson), connectGradiumUpstream (Gradium).
+  const provider = connectGradiumUpstream ? 'gradium' : connectUpstream ? 'boson' : (config.voiceProvider || (config.boson?.apiKey ? 'boson' : 'browser'));
   const wss = new WebSocketServer({ noServer: true, maxPayload: 512 * 1024, perMessageDeflate: false });
   const perIp = new Map();
   let total = 0;
@@ -30,7 +34,8 @@ export function attachVoiceServer(httpServer, { runtime, config, connectUpstream
       sendBinary: (b) => { if (ws.readyState === 1) ws.send(b, { binary: true }); },
       close: (code, reason) => { try { ws.close(code, reason); } catch { /* closed */ } },
     };
-    if (!config.boson.apiKey && !connectUpstream) {
+    const configured = provider === 'gradium' ? Boolean(config.gradium?.apiKey || connectGradiumUpstream) : provider === 'boson' ? Boolean(config.boson?.apiKey || connectUpstream) : false;
+    if (!configured) {
       client.sendJson({ type: 'error', code: 'boson_not_configured', message: 'Realtime voice unavailable; use browser fallback.' });
       return client.close(4503, 'boson_not_configured');
     }
@@ -39,15 +44,22 @@ export function attachVoiceServer(httpServer, { runtime, config, connectUpstream
     const release = () => { total--; const n = (perIp.get(ip) || 1) - 1; if (n > 0) perIp.set(ip, n); else perIp.delete(ip); };
 
     const sid = url.searchParams.get('sessionId');
-    const bridge = createRealtimeBridge({
-      client,
-      runtime,
-      sessionId: sid ? (ID_RE.test(sid) ? sid : 'invalid') : undefined, // 'invalid' -> reset flagged
-      voice: config.boson.voice,
-      turnDetection: config.boson.turnDetection,
-      connectUpstream: connectUpstream || (() => connectBoson({ apiKey: config.boson.apiKey, url: config.boson.realtimeUrl })),
-      logger,
-    });
+    const domain = url.searchParams.get('domain') || 'dinner';
+    const rt = (runtimes && runtimes[domain]) || runtime;
+    const sessionArg = sid ? (ID_RE.test(sid) ? sid : 'invalid') : undefined; // 'invalid' -> reset flagged
+    const bridge = provider === 'gradium'
+      ? createGradiumBridge({
+        client, runtime: rt, sessionId: sessionArg, logger,
+        voiceId: config.gradium?.voiceId, voiceName: config.gradium?.voiceName, language: config.gradium?.language,
+        turnHorizonS: config.gradium?.turnHorizonS, turnThreshold: config.gradium?.turnThreshold,
+        connect: connectGradiumUpstream || ((path) => connectGradium({ apiKey: config.gradium.apiKey, baseUrl: config.gradium.baseUrl, path })),
+      })
+      : createRealtimeBridge({
+        client, runtime: rt, sessionId: sessionArg, logger,
+        voice: config.boson.voice,
+        turnDetection: config.boson.turnDetection,
+        connectUpstream: connectUpstream || (() => connectBoson({ apiKey: config.boson.apiKey, url: config.boson.realtimeUrl })),
+      });
     ws.on('message', (data, isBinary) => {
       if (isBinary) return bridge.onClientAudio(Buffer.isBuffer(data) ? data : Buffer.from(data));
       let msg; try { msg = JSON.parse(data.toString('utf8')); } catch { return; }
@@ -57,8 +69,9 @@ export function attachVoiceServer(httpServer, { runtime, config, connectUpstream
     ws.on('error', () => {});
     bridge.start().catch((err) => {
       logger.error?.('[voice] upstream connect failed', err.code || err.name, err.closeCode ?? '');
-      client.sendJson({ type: 'error', code: err.closeCode === 3000 ? 'boson_auth' : 'boson_connect_failed', message: 'Realtime voice unavailable; use browser fallback.' });
-      bridge.close(4502, 'boson_connect_failed');
+      const code = provider === 'gradium' ? (err.closeCode === 1008 ? 'gradium_auth' : 'gradium_connect_failed') : (err.closeCode === 3000 ? 'boson_auth' : 'boson_connect_failed');
+      client.sendJson({ type: 'error', code, message: 'Realtime voice unavailable; use browser fallback.' });
+      bridge.close(4502, code);
     });
   }
 

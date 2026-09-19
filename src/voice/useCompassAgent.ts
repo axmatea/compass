@@ -8,7 +8,7 @@ import { createListener, createSpeaker, isEcho, recognitionSupported } from './s
 import type { Listener } from './speech'
 import { createTransport } from './transport'
 import type { TransportMode } from './transport'
-import type { AgentEvent, FieldName, Intent, OrbState, PatchOp, SearchResult, Turn } from './types'
+import type { AgentEvent, Intent, OrbState, PatchOp, ToolOutput, Turn } from './types'
 import { t } from './i18n'
 import { bosonConfigured, loadBoson } from './bosonVoice'
 import type { BosonClient, BosonStatus, VoiceSource } from './bosonVoice'
@@ -18,23 +18,30 @@ export interface ActionView {
   tool: string
   args: Record<string, unknown>
   status: 'running' | 'done' | 'invalidated' | 'failed'
-  changedFields?: FieldName[]
-  result?: SearchResult
+  changedFields?: string[]
+  result?: ToolOutput
   mock?: boolean
   run: number
 }
 export interface PlanView { intent: Intent; patch: PatchOp[]; version: number; revision: boolean }
+/** Website domain: the generated page as the backend rendered it. */
+export interface RenderView { html: string; version: number; pending: string[]; highlight: string[]; placeholder: boolean; key: number; stage: string }
+export interface AgentOptions {
+  /** 'dinner' = /api/turn with recorded replay fallback; 'site' = /api/site/turn, live only. */
+  domain?: 'dinner' | 'site'
+}
 
 const BUSY: OrbState[] = ['thinking', 'acting', 'speaking', 'replanning']
 export const isBusy = (s: OrbState) => BUSY.includes(s)
 const T = { interruptFlare: 460, replanHold: 1300, msPerWord: 330, holdMax: 4000 }
 const eventKey = (e: AgentEvent) => [e.type, e.turnId, 'actionId' in e ? e.actionId : '', e.at, 'stage' in e ? e.stage : '', 'text' in e ? e.text : ''].join('|')
 
-export function useCompassAgent() {
-  const transport = useMemo(() => createTransport(), [])
+export function useCompassAgent({ domain = 'dinner' }: AgentOptions = {}) {
+  const transport = useMemo(() => (domain === 'site' ? createTransport(undefined, { endpoint: '/api/site/turn', allowMock: false }) : createTransport()), [domain])
   const speaker = useMemo(() => createSpeaker(), [])
 
   const [plan, setPlan] = useState<PlanView | null>(null)
+  const [render, setRender] = useState<RenderView | null>(null)
   const [actions, setActions] = useState<ActionView[]>([])
   const [thinking, setThinking] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -146,6 +153,9 @@ export function useCompassAgent() {
       case 'tool_result':
         setActions(list => list.map(a => (a.id === e.actionId ? { ...a, status: 'done', result: e.result } : a)))
         break
+      case 'render':
+        setRender({ html: e.html, version: e.version, pending: e.pending ?? [], highlight: e.highlight ?? [], placeholder: Boolean(e.placeholder), key: nextKey(), stage: e.stage })
+        break
       case 'say':
         setTurns(t => [...t, { id: 'c' + nextKey(), who: 'compass', text: e.text }])
         say(e.text)
@@ -243,6 +253,7 @@ export function useCompassAgent() {
     bosonPending.current = new Promise<boolean>(r => { settle = r })
     const client = await loadBoson({
       sessionId: sessionRef.current,
+      domain,
       onStatus: s => { if (bosonRef.current === client) onBosonStatus(s) },
       onEvent: e => { if (bosonRef.current === client) onEvent(e, myEpoch) },
       onTranscript: tr => {
@@ -267,7 +278,7 @@ export function useCompassAgent() {
       client.stop(); bosonRef.current = null; bosonOk.current = false; endMic(); startBrowser(); return
     }
     if (!sessionRef.current && client.sessionId) sessionRef.current = client.sessionId
-    setVoiceSource('boson'); setServedBy('live'); setNotice(t.notice.listening)
+    setVoiceSource(client.provider ?? 'boson'); setServedBy('live'); setNotice(t.notice.listening)
   }
 
   function startBrowser() {
@@ -293,12 +304,13 @@ export function useCompassAgent() {
     timers.current.forEach(clearTimeout); timers.current = []
     transport.reset()
     seen.current.clear(); sessionRef.current = undefined; sessionWaiters.current = []
-    setPlan(null); setActions([]); setTurns([]); setInterim(''); setNotice(''); setRevisions(0)
+    setPlan(null); setRender(null); setActions([]); setTurns([]); setInterim(''); setNotice(''); setRevisions(0)
     setThinking(false); setInterrupted(false); setReplanning(false); setHolding(false)
   }, [endMic, stopSpeech, transport])
 
   return {
-    orb, plan, actions, holding, turns, interim, caption, servedBy, revisions, voiceSource,
+    orb, plan, render, actions, holding, turns, interim, caption, servedBy, revisions, voiceSource,
+    sessionId: sessionRef.current,
     micOn, micSupported, voiceOn, voiceSupported, notice,
     setVoiceOn, submit, interrupt, toggleMic, reset,
     hasPlan: Boolean(plan),
