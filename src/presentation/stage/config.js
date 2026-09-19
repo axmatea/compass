@@ -20,10 +20,12 @@ export const CONFIG = {
   stagePath: "live",
   // A recording of the SAME actual workflow, one continuous session, original audio.
   // The old /media/present/demo-fallback.mp4 is a fixture replay and is NOT wired here.
-  recording: { src: null, label: "Recorded run · original audio", hasAudio: true },
+  // real-run.mp4: ONE continuous real run of production /demo (build 1d8c69d, 2026-09-18), real GLM-5.3 + real OSM search,
+  // input typed (no microphone in the recorder), no sound. Label says exactly that.
+  recording: { src: "/media/present/real-run.mp4", label: "Recorded run · mycompass.world · typed input · no sound", hasAudio: false },
   domain: "mycompass.world",
   qr: "/media/present/qr-mycompass.svg",
   demoLoadTimeoutMs: 6000,
   demoZoom: 1.3,
-  fallbackZoom: 1,
+  fallbackZoom: 1.3, // center crop so the plan card is readable on a projector
 };

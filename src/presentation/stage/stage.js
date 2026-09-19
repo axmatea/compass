@@ -108,7 +108,7 @@ const B = {
   chain() {
     const s = h("section", "slide s-chain");
     const flow = h("div", "flow");
-    [["Voice", "Boson"], ["Request", "GLM on Nebius"], ["Generated page", "COMPASS application"]].forEach(([n, by], i) => {
+    [["Voice", "Boson"], ["Request", "GLM on Nebius"], CONFIG.app.verified ? ["Generated page", "COMPASS application"] : ["Updated plan", "COMPASS agent"]].forEach(([n, by], i) => {
       const node = h("div", `node n${i}`);
       node.style.setProperty("--i", i);
       node.append(h("span", "node-label", n), h("span", "node-by", by));
