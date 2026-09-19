@@ -23,6 +23,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         website: fileURLToPath(new URL("./index.html", import.meta.url)),
+        story: fileURLToPath(new URL("./story.html", import.meta.url)),
         presentation: fileURLToPath(new URL("./present.html", import.meta.url)),
         live: fileURLToPath(new URL("./live.html", import.meta.url)),
       },
