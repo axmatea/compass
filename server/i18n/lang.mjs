@@ -63,3 +63,28 @@ export function describeChanges(patch, lang = 'en') {
     .map((p) => L[p.field](p.to))
     .join(' ');
 }
+
+// COMPASS keeps a plan and searches places. It never books, confirms, sends or creates
+// calendar events, so a spoken reply must not say it did.
+const CLAIM = {
+  en: /\b(booked|reserved|confirmed|sent|invited|scheduled|all set|done|set (?:for|up|at))\b|\bset\s*[.;!]?$/i,
+  ru: /(забронир|зарезервир|подтвержд|отправлен|приглаш|назначен|запланирован|готово)/i,
+};
+const NEGATION = /\b(can't|cannot|can not|won't|haven't|not|no)\b|не\s|нельзя/i;
+
+/** True if the reply asserts a completed action (clauses that deny it are ignored). */
+export function claimsCompletion(reply, lang = 'en') {
+  const re = CLAIM[lang] || CLAIM.en;
+  return String(reply || '').split(/[.;,!?]|\s[-–]\s/).some((c) => re.test(c) && !NEGATION.test(c));
+}
+
+/** Truthful acknowledgement of the current plan: "Noted in the plan: schedule meeting, tomorrow at 9 AM." */
+export function notePlan(intent = {}, lang = 'en') {
+  if (lang === 'ru') {
+    const parts = [intent.date && dateRu(intent.date), intent.time && `в ${intent.time}`, intent.location && `рядом с ${intent.location}`].filter(Boolean);
+    return parts.length ? `Записано в план: ${parts.join(', ')}.` : 'Записано в план.';
+  }
+  const when = [intent.date, intent.time && `at ${formatTime(intent.time, 'en')}`].filter(Boolean).join(' ');
+  const parts = [intent.task, when, intent.location && `near ${intent.location}`].filter(Boolean);
+  return parts.length ? `Noted in the plan: ${parts.join(', ')}.` : 'Noted.';
+}

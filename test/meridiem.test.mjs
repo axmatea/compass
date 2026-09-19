@@ -53,3 +53,22 @@ test('a bare-hour correction keeps the half of the day of the current plan', () 
   ];
   for (const [text, time, prev, want] of cases) assert.equal(keepHalfOfDay(text, time, prev), want, `${text} ${prev}`);
 });
+
+test('truthful output: completion claims are detected, denials are not', async () => {
+  const { claimsCompletion, notePlan } = await import('../server/i18n/lang.mjs');
+  for (const r of ['Meeting with Sarah set for tomorrow at 9 AM; I can\'t send invites.', 'Table booked for 7 PM.', 'Done, dinner at 8.', 'Dinner scheduled for 7:30 PM.', 'Invite sent to Sarah.', "You're all set.", 'Встреча назначена на 9 утра.', 'Готово: ужин в 19:00.'])
+    assert.ok(claimsCompletion(r, /[а-я]/i.test(r) ? 'ru' : 'en'), r);
+  for (const r of ["I can't send invites or confirm reservations, but I can keep your plan.", 'Moved to 8 PM.', "Two Italian places near Palo Alto: A and B. I haven't checked tables yet.", 'Changed to 8 in the morning.', 'Записано: ужин завтра в 19:00.', 'Where should I look?', 'Not booked yet, want me to search?'])
+    assert.ok(!claimsCompletion(r, /[а-я]/i.test(r) ? 'ru' : 'en'), r);
+  assert.equal(notePlan({ task: 'schedule meeting', date: 'tomorrow', time: '09:00' }), 'Noted in the plan: schedule meeting, tomorrow at 9 AM.');
+});
+
+test('runtime: a "meeting set" ack is replaced by a truthful plan note', async () => {
+  const interpreter = scriptedInterpreter({
+    'Set a meeting with Sarah tomorrow at 9 AM and send her the invite.': { set: { task: 'schedule meeting', date: 'tomorrow', time: '09:00' }, reply: "Meeting with Sarah set for tomorrow at 9 AM; I can't send invites." },
+  });
+  const { runtime } = makeRuntime({ interpreter });
+  const s = runtime.createSession();
+  const r = await runtime.runTurn(s.id, 'Set a meeting with Sarah tomorrow at 9 AM and send her the invite.');
+  assert.equal(r.reply, "Noted in the plan: schedule meeting, tomorrow at 9 AM. I can't send, book or confirm anything.");
+});

@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { createState, applyUpdate, addAction, updateAction, invalidateActions, findReusableAction } from '../state/intent.mjs';
 import { missingFields } from '../tools/registry.mjs';
-import { detectLang, matchesLang, describeChanges, t as tr } from '../i18n/lang.mjs';
+import { detectLang, matchesLang, describeChanges, claimsCompletion, notePlan, t as tr } from '../i18n/lang.mjs';
 import { correctMeridiem, keepHalfOfDay } from './meridiem.mjs';
 
 export { describeChanges };
@@ -165,6 +165,11 @@ export function createAgentRuntime({ interpreter, tools, sessionTtlMs = 30 * 60_
         ack = interp.reply || describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
         // GLM sometimes answers in the wrong language; the spoken reply must follow the user.
         if (ack && !matchesLang(ack, lang)) ack = describeChanges(patch, lang) || (lang === 'ru' ? 'Понял.' : 'Got it.');
+        // Never let the model say something was booked/sent/set: only the plan changed.
+        if (claimsCompletion(ack, lang)) {
+          emit(session, 'reasoning_status', { turnId, stage: 'completion_claim_removed', text: ack });
+          ack = notePlan(session.state.intent, lang) + (/\b(can't|cannot)\b|не могу|нельзя/i.test(ack) ? (lang === 'ru' ? ' Отправлять и бронировать я не умею.' : " I can't send, book or confirm anything.") : '');
+        }
         if (!planned.length && waiting.has('location') && !/[?？]\s*$/.test(ack || '')) ack = [ack, tr(lang).askLocation].filter(Boolean).join(' ');
         if (ack) emit(session, 'say', { turnId, text: ack, final: planned.length === 0 });
       } finally {
