@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03060c"><meta name="compass-design" content="voice-builder-v1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03060c"><meta name="compass-design" content="voice-builder-v2">
 <title>COMPASS · Your intent becomes software.</title>
 <meta name="description" content="COMPASS is a voice agent that builds websites with you. Say what you want, change your mind mid-build, and it keeps going.">
 <link rel="stylesheet" href="/src/site/landing.css">
@@ -13,95 +13,50 @@
 
 <header class="bar">
 <a class="brand" href="/" aria-label="COMPASS"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.6"/><path d="M11 4.4 13.1 11 11 17.6 8.9 11Z"/></svg><span>COMPASS</span></a>
-<nav class="menu" aria-label="Primary"><a href="#say">How it works</a><a href="#intel">Intelligence</a><a href="#change">Interrupt</a><a href="/story">Story</a></nav>
+<nav class="menu" aria-label="Primary"><a href="#say">How it works</a><a href="#intel">Intelligence</a><a href="/presentation">Presentation</a></nav>
 <a class="pill" href="/demo">Talk to COMPASS</a>
 <button class="burger" aria-label="Menu" aria-expanded="false"><i></i><i></i></button>
 </header>
 
 <section class="hero" id="top">
 <video class="hero-art" autoplay muted loop playsinline preload="auto" poster="/assets/hero/compass-hero.jpg" src="/assets/hero/compass-hero.mp4" aria-hidden="true"></video>
-<div class="hero-veil"></div>
+<div class="hero-veil"></div><div class="grain" aria-hidden="true"></div>
 <div class="hero-copy">
 <p class="eyebrow">A NEW ERA OF CREATION</p>
-<h1>Your intent<br><em>becomes software.</em></h1>
-<p class="sub">COMPASS is a voice agent that builds websites with you.<br>Say what you want. Change your mind mid-build. It keeps going.</p>
+<h1 class="reveal">Your intent<br><em>becomes software.</em></h1>
+<p class="sub">COMPASS is a voice agent that builds websites with you. <br>Say what you want. Change your mind mid-build. It keeps going.</p>
 <div class="actions"><a class="cta" href="/demo">Talk to COMPASS<svg viewBox="0 0 16 11" aria-hidden="true"><path d="M0 5.5H14.6M10.3 1.2 14.9 5.5 10.3 9.8"/></svg></a><a class="ghost" href="#say">See how it works</a></div>
 <ul class="feats" aria-label="What COMPASS does"><li>Understands</li><li>Orchestrates</li><li>Builds</li><li>Evolves</li></ul>
 </div>
 </section>
 
-<section class="say" id="say">
-<div class="wrap two">
-<div class="copy">
-<p class="eyebrow">01 / SAY IT</p>
-<h2>One sentence.<br><em>A whole website.</em></h2>
-<p>No templates to pick, no forms to fill. You describe the site the way you would to a designer sitting next to you. COMPASS turns the sentence into structure, layout, design, content and interactions.</p>
+<section class="stage" id="say" data-step="0" aria-label="How it works">
+<div class="stage-pin">
+<div class="stage-copy">
+<div class="step" data-i="0"><p class="eyebrow">01 / SAY IT</p><h2>One sentence.<br><em>A whole website.</em></h2><p>No templates, no forms. Describe the site the way you would to a designer sitting next to you.</p></div>
+<div class="step" data-i="1"><p class="eyebrow">02 / IT BUILDS</p><h2>Every layer,<br><em>in the right order.</em></h2><ul class="layers"><li>Structure</li><li>Layout</li><li>Design</li><li>Content</li><li>Interactions</li><li>Deployment</li></ul></div>
+<div class="step" data-i="2"><p class="eyebrow">03 / CHANGE YOUR MIND</p><h2>Interrupt it<br><em>mid-build.</em></h2><p>Say it while COMPASS is still working. It understands the intent has evolved, and keeps going.</p></div>
+<div class="step" data-i="3"><p class="eyebrow">04 / IT EVOLVES</p><h2>Only what changed,<br><em>changes.</em></h2><ul class="plan-mini"><li><b>AI company</b><small>kept</small></li><li><b>Premium</b><small>kept</small></li><li class="changed"><b><s>Light</s> Dark</b><small>updated</small></li><li class="changed"><b>Cinematic hero</b><small>updated</small></li></ul></div>
 </div>
-<div class="voice-card" aria-live="polite">
-<div class="mic" aria-hidden="true"><span></span></div>
-<p class="voice-line" data-lines='["Build me a premium website for an AI company.","Actually, make it darker. Give the hero a cinematic feel.","Turn this section into an interactive demo."]'>Build me a premium website for an AI company.</p>
-<div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-</div>
-</div>
-</section>
-
-<section class="build" id="build">
-<div class="wrap two flip">
-<div class="stack" aria-hidden="true">
-<div class="plane p1"><b></b><b></b><b></b></div>
-<div class="plane p2"><b></b><b></b></div>
-<div class="plane p3"><b></b><b></b><b></b><b></b></div>
-<div class="plane p4"><b></b></div>
-</div>
-<div class="copy">
-<p class="eyebrow">02 / IT BUILDS</p>
-<h2>Every layer,<br><em>in the right order.</em></h2>
-<ul class="layers"><li>Structure</li><li>Layout</li><li>Design</li><li>Content</li><li>Interactions</li><li>Deployment</li></ul>
-<p>COMPASS plans before it draws. It works through the layers as one coordinated agent, so the site holds together instead of being stitched from parts.</p>
-</div>
-</div>
-</section>
-
-<section class="preview" id="preview">
-<div class="wrap">
-<p class="eyebrow center">03 / THE RESULT</p>
-<h2 class="center">A real page. <em>Not a mockup.</em></h2>
-<div class="browser" aria-label="Example of a generated page">
+<div class="stage-visual">
+<div class="browser" aria-label="The page COMPASS is building">
 <div class="chrome"><i></i><i></i><i></i><span>yourcompany.ai</span></div>
-<div class="page">
+<div class="page light">
 <div class="page-bar"><span class="page-brand">▽ YOURCOMPANY</span><span class="page-nav"><b>Product</b><b>Solutions</b><b>About</b></span><span class="page-btn">Get early access</span></div>
 <div class="page-hero"><div><h3>Ideas into<br><strong>impact.</strong></h3><p>The agentic platform for what's next.</p><span class="page-cta">Get early access</span></div><div class="page-demo"><span>Try it live</span><div class="page-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><ul><li>Plan</li><li class="on">Generate</li><li>Deploy</li></ul></div></div>
+<div class="page-build" aria-hidden="true"><span>Understanding</span><span>Structure</span><span>Layout</span><span>Design</span><span>Content</span></div>
 </div>
 </div>
+<div class="voice-card" aria-live="polite"><div class="mic" aria-hidden="true"><span></span></div><p class="voice-line" data-l0="Build me a premium website for an AI company." data-l2="Actually, make it darker. Give the hero a cinematic feel.">Build me a premium website for an AI company.</p><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
-</section>
-
-<section class="change" id="change">
-<div class="wrap two">
-<div class="copy">
-<p class="eyebrow">04 / CHANGE YOUR MIND</p>
-<h2>Interrupt it mid-build.<br><em>Only what changed, changes.</em></h2>
-<p>Say “make it darker” while it is still working. COMPASS patches the plan instead of starting over: what you liked stays, what you changed updates, what you added lands.</p>
-<a class="ghost" href="/story">Watch a plan change mid-sentence →</a>
-</div>
-<div class="plan">
-<div class="plan-head"><span>THE PLAN</span><span class="upd">UPDATED</span></div>
-<ul>
-<li><b>AI company website</b><small>kept</small></li>
-<li><b>Premium tone</b><small>kept</small></li>
-<li class="changed"><b><s>Light</s> Dark theme</b><small>updated</small></li>
-<li class="changed"><b>Cinematic hero</b><small>updated</small></li>
-<li class="added"><b>Interactive demo section</b><small>added</small></li>
-</ul>
-<div class="steps"><span class="done">Understanding changes</span><span class="done">Updating hero section</span><span class="done">Transforming to dark theme</span><span class="run">Building interactive demo</span></div>
-</div>
+<ol class="stage-dots" aria-hidden="true"><li></li><li></li><li></li><li></li></ol>
 </div>
 </section>
 
 <section class="intel" id="intel">
 <div class="wrap">
 <p class="eyebrow center">MULTIPLE INTELLIGENCES · ONE DIRECTION</p>
-<h2 class="center">One agent.<br><em>The best model for each move.</em></h2>
+<h2 class="center reveal">One agent.<br><em>The best model for each move.</em></h2>
 <div class="orbs">
 <div class="orb"><i></i><b>Reasoning</b><small>GLM-5.3 on Nebius</small></div>
 <div class="orb"><i></i><b>Voice</b><small>Boson Higgs realtime</small></div>
@@ -114,7 +69,7 @@
 <section class="try" id="try">
 <div class="wrap">
 <p class="eyebrow center">YOUR TURN</p>
-<h2 class="center">Talk to COMPASS.<br><em>Then interrupt it.</em></h2>
+<h2 class="center reveal">Talk to COMPASS.<br><em>Then interrupt it.</em></h2>
 <p class="center sub">The public demo builds a page from your voice: say what you want, change it mid-sentence, watch only the changed parts update.</p>
 <div class="actions center"><a class="cta" href="/demo">Talk to COMPASS<svg viewBox="0 0 16 11" aria-hidden="true"><path d="M0 5.5H14.6M10.3 1.2 14.9 5.5 10.3 9.8"/></svg></a></div>
 <p class="truth">The page in the demo is rendered for your session only. Nothing is published or deployed on your behalf. COMPASS is the voice agent, not a website builder.</p>
@@ -124,7 +79,7 @@
 <footer class="foot">
 <span class="brand"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.6"/><path d="M11 4.4 13.1 11 11 17.6 8.9 11Z"/></svg>COMPASS</span>
 <span class="tag">Your intent becomes software.</span>
-<nav aria-label="Footer"><a href="/story">Story</a><a href="/demo">Demo</a><a href="/present">Present</a></nav>
+<nav aria-label="Footer"><a href="/presentation">Presentation</a><a href="/demo">Demo</a></nav>
 <span class="credit">NAYL × VINCENT</span>
 </footer>
 </body></html>

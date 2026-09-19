@@ -1,5 +1,5 @@
 
-// One native-scroll narrative is shared by the website and presentation mode.
+// The presentation (/presentation): one native-scroll narrative, also used in autoplay mode (#present).
 // New generated assets are activated only through the local verified manifest.
 const scenes = [...document.querySelectorAll('.scene')];
 const $ = (selector) => document.querySelector(selector);
@@ -12,24 +12,24 @@ const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
 const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
- 'Plans change mid-sentence. COMPASS is a voice agent that keeps up: it adapts while it acts.',
- 'One plain sentence: dinner tomorrow at 7, Italian. No form, no settings.',
- 'COMPASS. It does not just answer you. It adapts while acting.',
- 'The sentence becomes a structured plan: Dinner, Tomorrow, 7:00 PM, Italian.',
- 'COMPASS starts acting immediately: it begins looking for a table at 7:00 PM.',
- 'Mid-action, the user changes their mind: make it 8, near Palo Alto. This is the moment that matters.',
- 'Only what changed changes. Dinner, tomorrow and Italian are kept.',
- '7:00 PM is superseded, 8:00 PM becomes active, and Palo Alto is added.',
- 'The search is rescoped, not restarted: an Italian table near Palo Alto for 8:00 PM.',
- 'Speak the way plans actually happen. The footage is illustrative.',
- 'Try it live at /demo: say the plan, interrupt it, watch the plan update. Restaurants come from OpenStreetMap. Nothing is booked.',
- 'COMPASS does not just answer. It adapts.'
+ 'COMPASS is a better interaction model for voice agents. It understands intent as it evolves and continues acting instead of starting over.',
+ 'One plain sentence: a premium website for an AI company. No form, no template picker.',
+ 'COMPASS. It understands evolving intent. It continues acting.',
+ 'The sentence becomes a structured plan: AI company, premium, light theme, hero, early access.',
+ 'COMPASS starts building immediately: the hero section, light theme.',
+ 'Mid-build, the user changes their mind: make it darker, give the hero a cinematic feel. This is the moment that matters.',
+ 'Only what changed changes. AI company, premium and early access are kept.',
+ 'Light is superseded, dark becomes active, and the cinematic hero is added to the plan.',
+ 'The site is rebuilt where it changed, not from scratch.',
+ 'The result: the same page, evolved. Dark, cinematic, still the same company and offer.',
+ 'Try it live at /demo: the same interaction model on a planning task today. Say it, interrupt it, watch it update. Website building is in early access.',
+ 'COMPASS understands intent. It keeps acting.'
 ];
 let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
 let media = {};
-const sceneMedia = { 0: 'chaos', 1: 'speak', 9: 'progress' };
+const sceneMedia = { 0: 'chaos', 1: 'speak' };
 const orbPos = [
  [80, 52, .28, 0], [78, 44, .3, 0], [50, 30, .92, 1], [50, 29, .7, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [50, 28, .58, 1], [50, 77, .18, 1],
@@ -58,8 +58,8 @@ function correct(announce = true) {
  $('.new-concern').hidden = false;
  $('#correct').textContent = 'Plan updated ✓';
  $('#correct').setAttribute('aria-pressed', 'true');
- $('#correction-note').textContent = 'KEPT · DINNER, TOMORROW, ITALIAN';
- if (announce) $('#announcement').textContent = 'Interrupted. 7:00 PM is superseded. 8:00 PM near Palo Alto is active. Dinner, tomorrow and Italian are kept.';
+ $('#correction-note').textContent = 'KEPT · AI COMPANY, PREMIUM, EARLY ACCESS';
+ if (announce) $('#announcement').textContent = 'Interrupted. Light theme is superseded. Dark theme with a cinematic hero is active. AI company, premium and early access are kept.';
 }
 function resetCorrection() {
  corrected = false;
@@ -67,7 +67,7 @@ function resetCorrection() {
  $('.new-concern').hidden = true;
  $('#correct').innerHTML = 'Interrupt <span aria-hidden="true">↗</span>';
  $('#correct').setAttribute('aria-pressed', 'false');
- $('#correction-note').textContent = 'MID-ACTION. NO RESTART.';
+ $('#correction-note').textContent = 'MID-BUILD. NO RESTART.';
 }
 function setActive(index) {
  if (index === active) return;
@@ -88,7 +88,7 @@ function render() {
  setActive(clamp(Math.round(position), 0, 11));
  const opacityAt = (index) => clamp(1 - Math.abs(p - index));
  for (const [key, el] of Object.entries(worlds)) {
-  const i = key === 'chaos' ? 0 : key === 'speak' ? 1 : 9;
+  const i = key === 'chaos' ? 0 : 1;
   el.style.opacity = key === 'chaos' ? clamp(1 - p) : opacityAt(i);
   // Later worlds rise into view as full-height vertical apertures.
   el.style.clipPath = i === 9 ? `inset(${clamp(9 - p) * 100}% 0 0)` : 'inset(0)';
@@ -140,8 +140,8 @@ function stopAuto() {
  clearTimeout(timer);
  cancelAnimationFrame(scrollAnimation);
  scrollAnimation = 0;
- $('#play-toggle').innerHTML = 'Play story <span aria-hidden="true">▷</span>';
- $('#play-toggle').setAttribute('aria-label', 'Play story');
+ $('#play-toggle').innerHTML = 'Play presentation <span aria-hidden="true">▷</span>';
+ $('#play-toggle').setAttribute('aria-label', 'Play presentation');
 }
 function goTo(index, animate = true) {
  index = clamp(index, 0, 11);
@@ -171,12 +171,12 @@ function queueAdvance() {
 }
 function playStory(fromStart = false) {
  if (reducedQuery.matches) { $('#announcement').textContent = 'Reduced motion is enabled. Scroll or use the scene navigation to explore.'; return; }
- if (motionPaused) { $('#announcement').textContent = 'Motion is paused. Turn motion on to play the story, or scroll at your own pace.'; return; }
+ if (motionPaused) { $('#announcement').textContent = 'Motion is paused. Turn motion on to play the presentation, or scroll at your own pace.'; return; }
  stopAuto();
  if (fromStart || active === 11) goTo(0);
  playing = true;
- $('#play-toggle').innerHTML = 'Pause story <span aria-hidden="true">Ⅱ</span>';
- $('#play-toggle').setAttribute('aria-label', 'Pause story');
+ $('#play-toggle').innerHTML = 'Pause presentation <span aria-hidden="true">Ⅱ</span>';
+ $('#play-toggle').setAttribute('aria-label', 'Pause presentation');
  timer = window.setTimeout(queueAdvance, 250);
 }
 function updateMotion() {

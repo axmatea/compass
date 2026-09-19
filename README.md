@@ -9,7 +9,8 @@ A voice agent that adapts while acting. Say what you want, change your mind mid-
 
 ## What is implemented (deployed)
 
-- `/` website: opening screen plus a scroll story of one plan changing mid-sentence (illustrative footage).
+- `/` website: sales-first landing for the voice agent that builds websites.
+- `/presentation` (alias `/story`): the hackathon presentation, a 12-scene scroll narrative: speak a website, interrupt mid-build, the site evolves.
 - `/demo` voice to website. Say what page you want; COMPASS keeps a structured brief (business, audience, tone, theme, accent, font, hero layout, sections), writes the copy with the `write_copy` tool and renders the page into a sandboxed preview. A follow-up like "Make it darker, change the hero and add a product section" patches only the changed fields, keeps the rest, cancels the in-flight copy step and re-writes only the sections that depend on what changed. Every turn goes through `/api/site/turn` (SSE, contract v1).
 - Inference: General Compute (`minimax-m2.7`, OpenAI-compatible, `GENERALCOMPUTE_API_KEY`) is the primary model for interpretation and copy; Nebius GLM-5.3 is the automatic failover (`server/llm/nebius.mjs`, `createLlmChain`). `/api/health` reports which provider is active.
 - Voice: Gradium (`GRADIUM_API_KEY`): streaming speech-to-text with semantic turn detection and streaming text-to-speech, relayed through the server-side WebSocket bridge `/api/voice/realtime` (`server/voice/gradium-bridge.mjs`). Barge-in closes the current speech and the new utterance becomes a COMPASS turn. Boson Higgs Realtime remains as the second provider; browser speech is the last fallback. The UI says which voice is active. No API key reaches the browser.
@@ -38,7 +39,7 @@ Live checks (need keys): `npm run test:live` (GLM), `npm run probe:boson`, `npm 
 
 ## Source layout
 
-- `index.html`, `src/site/`, `src/cinematic/`: website and story.
+- `index.html`, `story.html`, `src/site/`, `src/cinematic/`: website and presentation.
 - `live.html`, `src/components/`, `src/voice/`: the `/demo` agent UI.
 - `present.html`, `src/presentation/stage/`: presentation.
 - `server.mjs`, `server/`: static server, `/healthz`, `/api/health`, `/api/turn`, voice bridge, intent state, tools.
