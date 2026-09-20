@@ -12,7 +12,7 @@ const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
 const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
- 'The film. Play it with sound, then scroll into the presentation.',
+ 'The film, from YouTube. Play it with sound, then scroll into the presentation.',
  'COMPASS is a better interaction model for voice agents. It understands intent as it evolves and continues acting instead of starting over.',
  'One plain sentence: a premium website for an AI company. No form, no template picker.',
  'COMPASS. It understands evolving intent. It continues acting.',
@@ -23,6 +23,7 @@ const notes = [
  'Light is superseded, dark becomes active, and the cinematic hero is added to the plan.',
  'The site is rebuilt where it changed, not from scratch.',
  'The result: the same page, evolved. Dark, cinematic, still the same company and offer.',
+ 'How the demo runs: an instant model keeps contact, the smart agent refines the request with useful questions, heavy tasks run in parallel. The conversation continues while the work runs.',
  'Try it live at /demo: say the page you want, interrupt it mid-build, watch only the changed parts update. The page is rendered for the session only, nothing is published.',
  'COMPASS understands intent. It keeps acting.'
 ];
@@ -32,17 +33,18 @@ let corrected = false;
 let media = {};
 const F = 1; // scene 0 is the film; the narrative below is indexed from scene 1
 const LAST = scenes.length - 1;
-const film = $('#film');
+const film = $('#film'); // YouTube iframe (enablejsapi); paused through postMessage when the scene changes
+const pauseFilm = () => film?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
 const sceneMedia = { 1: 'chaos', 2: 'speak' };
 const orbPos = [
  [50, 50, .2, 0], [80, 52, .28, 0], [78, 44, .3, 0], [50, 30, .92, 1], [50, 29, .7, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [50, 28, .58, 1], [50, 77, .18, 1],
- [88, 18, .2, 0], [81, 50, .32, 0], [83, 25, .26, .75], [50, 27, .58, 1]
+ [88, 18, .2, 0], [81, 50, .32, 0], [50, 50, .2, 0], [83, 25, .26, .75], [50, 27, .58, 1]
 ];
 const mobileOrbPos = [
  [50, 50, .2, 0], [75, 35, .25, 0], [76, 40, .25, 0], [50, 31, 1, 1], [50, 29, .84, 1],
  [84, 24, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1], [50, 75, .2, 1],
- [86, 17, .18, 0], [81, 35, .25, 0], [84, 19, .26, .7], [50, 26, .65, 1]
+ [86, 17, .18, 0], [81, 35, .25, 0], [50, 50, .2, 0], [84, 19, .26, .7], [50, 26, .65, 1]
 ];
 
 $('#contents').innerHTML = scenes.map((s, i) => `<a href="#${s.id}" data-scene="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${s.dataset.label}</a>`).join('');
@@ -82,7 +84,7 @@ function setActive(index) {
  navLinks.forEach((a, i) => a.setAttribute('aria-current', String(i === index)));
  document.body.classList.toggle('light-active', index === 8 + F);
  if (index >= 6 + F) correct(false);
- if (film && index !== 0 && !film.paused) film.pause();
+ if (index !== 0) pauseFilm();
  manageMedia();
 }
 function render() {
@@ -109,7 +111,7 @@ function render() {
  orb.style.transform = `translate(-50%,-50%) scale(${mix(a[2], b[2], t)})`;
  orb.style.opacity = mix(a[3], b[3], t);
  $('.orb-wave').style.opacity = clamp(1 - Math.abs(q - 3));
- $('.world-horizon').style.opacity = clamp(q - 10);
+ $('.world-horizon').style.opacity = clamp(q - 11);
  scenes.forEach((scene, i) => {
   const distance = i - position;
   const copy = scene.querySelector('.scene-copy');
@@ -166,11 +168,8 @@ function goTo(index, animate = true) {
 function queueAdvance() {
  const current = Math.round(scrollPosition());
  const delay = current === 5 + F ? 7500 : current === 8 + F ? 9500 : 5000;
- // On the film scene, autoplay waits for the film to end instead of cutting it.
- if (current === 0 && film && !film.paused && !film.ended) {
-  film.addEventListener('ended', () => { if (playing) { timer = window.setTimeout(queueAdvance, 250); } }, { once: true });
-  return;
- }
+ // On the film scene, autoplay does not cut the film: the presenter scrolls on when it ends.
+ if (current === 0) { stopAuto(); return; }
  timer = window.setTimeout(() => {
   if (!playing) return;
   if (current === LAST) { stopAuto(); return; }
@@ -250,8 +249,7 @@ document.addEventListener('keydown', event => {
  } else if (wasPlaying) requestFrame();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { stopAuto(); voice.stop(); } manageMedia(); });
-window.addEventListener('pagehide', () => { stopAuto(); voice.stop(); videoNodes.forEach(video => video.pause()); film?.pause(); });
-film?.addEventListener('play', stopAuto);
+window.addEventListener('pagehide', () => { stopAuto(); voice.stop(); videoNodes.forEach(video => video.pause()); pauseFilm(); });
 window.addEventListener('scroll', requestFrame, { passive: true });
 window.addEventListener('resize', measure, { passive: true });
 reducedQuery.addEventListener('change', () => { stopAuto(); motionPaused = reducedQuery.matches; updateMotion(); });
