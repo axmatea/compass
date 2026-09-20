@@ -12,6 +12,7 @@ const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
 const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
+ 'The film. Play it with sound, then scroll into the presentation.',
  'COMPASS is a better interaction model for voice agents. It understands intent as it evolves and continues acting instead of starting over.',
  'One plain sentence: a premium website for an AI company. No form, no template picker.',
  'COMPASS. It understands evolving intent. It continues acting.',
@@ -29,14 +30,17 @@ let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
 let media = {};
-const sceneMedia = { 0: 'chaos', 1: 'speak' };
+const F = 1; // scene 0 is the film; the narrative below is indexed from scene 1
+const LAST = scenes.length - 1;
+const film = $('#film');
+const sceneMedia = { 1: 'chaos', 2: 'speak' };
 const orbPos = [
- [80, 52, .28, 0], [78, 44, .3, 0], [50, 30, .92, 1], [50, 29, .7, 1],
+ [50, 50, .2, 0], [80, 52, .28, 0], [78, 44, .3, 0], [50, 30, .92, 1], [50, 29, .7, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [50, 28, .58, 1], [50, 77, .18, 1],
  [88, 18, .2, 0], [81, 50, .32, 0], [83, 25, .26, .75], [50, 27, .58, 1]
 ];
 const mobileOrbPos = [
- [75, 35, .25, 0], [76, 40, .25, 0], [50, 31, 1, 1], [50, 29, .84, 1],
+ [50, 50, .2, 0], [75, 35, .25, 0], [76, 40, .25, 0], [50, 31, 1, 1], [50, 29, .84, 1],
  [84, 24, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1], [50, 75, .2, 1],
  [86, 17, .18, 0], [81, 35, .25, 0], [84, 19, .26, .7], [50, 26, .65, 1]
 ];
@@ -72,30 +76,31 @@ function resetCorrection() {
 function setActive(index) {
  if (index === active) return;
  active = index;
- $('#scene-count').textContent = `${String(index + 1).padStart(2, '0')} / 12`;
+ $('#scene-count').textContent = `${String(index + 1).padStart(2, '0')} / ${scenes.length}`;
  $('#scene-name').textContent = scenes[index].dataset.label;
  $('#note-content').textContent = notes[index];
  navLinks.forEach((a, i) => a.setAttribute('aria-current', String(i === index)));
- document.body.classList.toggle('light-active', index === 8);
- if (index >= 6) correct(false);
+ document.body.classList.toggle('light-active', index === 8 + F);
+ if (index >= 6 + F) correct(false);
+ if (film && index !== 0 && !film.paused) film.pause();
  manageMedia();
 }
 function render() {
  queued = false;
  position = scrollPosition();
  const p = reducedQuery.matches ? Math.round(position) : position;
- const lower = Math.floor(p), upper = Math.min(11, lower + 1), t = p - lower;
- setActive(clamp(Math.round(position), 0, 11));
- const opacityAt = (index) => clamp(1 - Math.abs(p - index));
+ const lower = Math.floor(p), upper = Math.min(LAST, lower + 1), t = p - lower;
+ setActive(clamp(Math.round(position), 0, LAST));
+ const q = p - F; // narrative position: 0 = first narrative scene
+ const opacityAt = (index) => clamp(1 - Math.abs(q - index));
  for (const [key, el] of Object.entries(worlds)) {
   const i = key === 'chaos' ? 0 : 1;
-  el.style.opacity = key === 'chaos' ? clamp(1 - p) : opacityAt(i);
-  // Later worlds rise into view as full-height vertical apertures.
-  el.style.clipPath = i === 9 ? `inset(${clamp(9 - p) * 100}% 0 0)` : 'inset(0)';
+  el.style.opacity = opacityAt(i);
+  el.style.clipPath = 'inset(0)';
  }
- const lightIn = clamp(p - 7), lightOut = clamp(p - 8);
+ const lightIn = clamp(q - 7), lightOut = clamp(q - 8);
  $('.light-world').style.clipPath = `inset(${(1 - lightIn) * 100}% 0 ${lightOut * 100}% 0)`;
- const productIn = clamp(p - 9), productOut = clamp(p - 10);
+ const productIn = clamp(q - 9), productOut = clamp(q - 10);
  $('.product-world').style.clipPath = `inset(${(1 - productIn) * 100}% 0 ${productOut * 100}% 0)`;
  const positions = mobileQuery.matches ? mobileOrbPos : orbPos;
  const a = positions[lower], b = positions[upper];
@@ -103,8 +108,8 @@ function render() {
  orb.style.top = `${mix(a[1], b[1], t)}%`;
  orb.style.transform = `translate(-50%,-50%) scale(${mix(a[2], b[2], t)})`;
  orb.style.opacity = mix(a[3], b[3], t);
- $('.orb-wave').style.opacity = clamp(1 - Math.abs(p - 3));
- $('.world-horizon').style.opacity = clamp(p - 10);
+ $('.orb-wave').style.opacity = clamp(1 - Math.abs(q - 3));
+ $('.world-horizon').style.opacity = clamp(q - 10);
  scenes.forEach((scene, i) => {
   const distance = i - position;
   const copy = scene.querySelector('.scene-copy');
@@ -144,7 +149,7 @@ function stopAuto() {
  $('#play-toggle').setAttribute('aria-label', 'Play presentation');
 }
 function goTo(index, animate = true) {
- index = clamp(index, 0, 11);
+ index = clamp(index, 0, LAST);
  cancelAnimationFrame(scrollAnimation);
  const target = starts[index], from = window.scrollY;
  if (!animate || reducedQuery.matches || motionPaused) { window.scrollTo(0, target); return; }
@@ -160,11 +165,16 @@ function goTo(index, animate = true) {
 }
 function queueAdvance() {
  const current = Math.round(scrollPosition());
- const delay = current === 5 ? 7500 : current === 8 ? 9500 : 5000;
+ const delay = current === 5 + F ? 7500 : current === 8 + F ? 9500 : 5000;
+ // On the film scene, autoplay waits for the film to end instead of cutting it.
+ if (current === 0 && film && !film.paused && !film.ended) {
+  film.addEventListener('ended', () => { if (playing) { timer = window.setTimeout(queueAdvance, 250); } }, { once: true });
+  return;
+ }
  timer = window.setTimeout(() => {
   if (!playing) return;
-  if (current === 11) { stopAuto(); return; }
-  if (current === 5) correct(false);
+  if (current === LAST) { stopAuto(); return; }
+  if (current === 5 + F) correct(false);
   goTo(current + 1);
   timer = window.setTimeout(queueAdvance, 250);
  }, delay);
@@ -173,7 +183,7 @@ function playStory(fromStart = false) {
  if (reducedQuery.matches) { $('#announcement').textContent = 'Reduced motion is enabled. Scroll or use the scene navigation to explore.'; return; }
  if (motionPaused) { $('#announcement').textContent = 'Motion is paused. Turn motion on to play the presentation, or scroll at your own pace.'; return; }
  stopAuto();
- if (fromStart || active === 11) goTo(0);
+ if (fromStart || active === LAST) goTo(0);
  playing = true;
  $('#play-toggle').innerHTML = 'Pause presentation <span aria-hidden="true">Ⅱ</span>';
  $('#play-toggle').setAttribute('aria-label', 'Pause presentation');
@@ -206,7 +216,7 @@ function closePanels() {
 }
 document.addEventListener('click', event => {
  const anchor = event.target.closest('a[href^="#scene-"]');
- if (anchor) { event.preventDefault(); stopAuto(); goTo(Number(anchor.hash.replace('#scene-', '')) - 1); closePanels(); }
+ if (anchor) { event.preventDefault(); stopAuto(); goTo(scenes.indexOf(document.getElementById(anchor.hash.slice(1)))); closePanels(); }
 });
 $('#presentation-link').addEventListener('click', () => { closePanels(); });
 function presentationMode() {
@@ -235,12 +245,13 @@ document.addEventListener('keydown', event => {
  const prev = ['ArrowUp', 'ArrowLeft', 'PageUp'].includes(event.key);
  if (next || prev || event.key === 'Home' || event.key === 'End') {
   event.preventDefault();
-  const index = event.key === 'Home' ? 0 : event.key === 'End' ? 11 : Math.round(scrollPosition()) + (next ? 1 : -1);
+  const index = event.key === 'Home' ? 0 : event.key === 'End' ? LAST : Math.round(scrollPosition()) + (next ? 1 : -1);
   goTo(index);
  } else if (wasPlaying) requestFrame();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { stopAuto(); voice.stop(); } manageMedia(); });
-window.addEventListener('pagehide', () => { stopAuto(); voice.stop(); videoNodes.forEach(video => video.pause()); });
+window.addEventListener('pagehide', () => { stopAuto(); voice.stop(); videoNodes.forEach(video => video.pause()); film?.pause(); });
+film?.addEventListener('play', stopAuto);
 window.addEventListener('scroll', requestFrame, { passive: true });
 window.addEventListener('resize', measure, { passive: true });
 reducedQuery.addEventListener('change', () => { stopAuto(); motionPaused = reducedQuery.matches; updateMotion(); });
