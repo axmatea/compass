@@ -61,7 +61,15 @@ const SHAPE = {
   signup: '{"headline": "3-6 words", "text": "one sentence, max 16 words", "cta": "1-3 words"}',
 };
 
+/** Some models (minimax-m2.7 on General Compute) return each section as a JSON-encoded string inside the JSON object. Unwrap before coercing. */
+export function unwrap(v) {
+  if (typeof v === 'string') { const t = v.trim(); if (/^[\[{]/.test(t)) { try { return unwrap(JSON.parse(t)); } catch { return v; } } return v; }
+  if (Array.isArray(v)) return v.map(unwrap);
+  return v;
+}
+
 function coerce(section, v) {
+  v = unwrap(v);
   const take = (arr, n, f) => (Array.isArray(arr) ? arr.slice(0, n).map(f).filter(Boolean) : []);
   switch (section) {
     case 'hero': return v && typeof v === 'object' ? { headline: S(v.headline, 90), subhead: S(v.subhead, 200), cta: S(v.cta, 30) } : null;
