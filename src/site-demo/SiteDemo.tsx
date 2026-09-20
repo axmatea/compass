@@ -10,9 +10,9 @@ import './site-demo.css'
 
 /** Prepared lines are content (what a presenter might say), not UI labels. */
 const LINES = [
-  'Build me a landing page for Northwind Coffee, a small coffee roastery in Palo Alto. Warm, premium feel.',
-  'Make it darker, change the hero and add a product section.',
-  "Actually, it's a tea house, not a coffee roastery. Add pricing.",
+  'Build me a premium website for an AI company. Make it minimal, dark and cinematic.',
+  'Actually, make it warmer. Make the hero more ambitious, and add a pricing section.',
+  'Now make it lighter, and add a testimonials section.',
 ]
 const FIELDS: { key: string; label: string }[] = [
   { key: 'business', label: 'Name' }, { key: 'kind', label: 'What' }, { key: 'audience', label: 'For' }, { key: 'tone', label: 'Tone' },

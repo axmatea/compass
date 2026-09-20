@@ -1,4 +1,4 @@
-// COMPASS landing (owner: FRONTEND). Menu, word reveals, hero parallax, and the pinned stage. No network, no library.
+// COMPASS landing (owner: FRONTEND). Menu, word reveals, hero parallax, and the pinned stage. No library; one read-only /api/health probe for the live line.
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 const bar = document.querySelector('.bar')
 const burger = document.querySelector('.burger')
@@ -45,7 +45,7 @@ function setStep(i) {
   steps.forEach((s, j) => { s.classList.toggle('on', j === i); s.classList.toggle('past', j < i) })
   browser.classList.toggle('blank', i === 0)
   browser.classList.toggle('building', i === 1)
-  page.classList.toggle('light', i > 0 && i < 3)
+  page.classList.toggle('warm', i === 3)
   if (i === 0 || i === 2) { if (reduce) line.textContent = line.dataset['l' + i]; else if (prev !== -1 || i === 2) type(line.dataset['l' + i]); else line.textContent = line.dataset.l0 }
 }
 let queued = false
@@ -70,3 +70,15 @@ frame()
 // The film pauses when it leaves the viewport, so audio never plays over the rest of the page.
 const filmEl = document.getElementById('film-video')
 if (filmEl && 'IntersectionObserver' in window) new IntersectionObserver(([e]) => { if (!e.isIntersecting && !filmEl.paused) filmEl.pause() }, { threshold: 0.2 }).observe(filmEl)
+
+// Under the hood: the live line states what production runs right now (presence only, never a secret).
+const live = document.getElementById('live-stack')
+if (live) fetch('/api/health', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(h => {
+  if (!h || !h.ok) return
+  const names = { gradium: 'Gradium', boson: 'Boson Higgs', browser: 'browser speech', generalcompute: 'General Compute', nebius: 'Nebius GLM-5.3' }
+  const voice = h.voice && h.voice.provider, llm = h.llm && h.llm.provider
+  if (!voice || !llm) return
+  const model = h.llm.model ? ` (${h.llm.model})` : '', failover = h.llm.fallback ? ` · failover ${names[h.llm.fallback] || h.llm.fallback}` : ''
+  live.querySelector('span').textContent = `Live now · voice ${names[voice] || voice} · reasoning ${names[llm] || llm}${model}${failover}`
+  live.hidden = false
+})

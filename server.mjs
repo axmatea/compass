@@ -15,7 +15,8 @@ const server = createServer(async (req,res) => {
  try {
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/healthz'){res.writeHead(200,{'Content-Type':'text/plain'}).end(req.method==='HEAD'?undefined:'ok');return;}
-  const route = ['/'].includes(pathname) ? '/index.html' : ['/presentation','/presentation/','/story','/story/'].includes(pathname) ? '/story.html' : ['/demo','/demo/'].includes(pathname) ? '/live.html' : ['/present','/present/'].includes(pathname) ? '/present.html' : pathname;
+  if(['/present','/present/'].includes(pathname)){res.writeHead(301,{Location:'/presentation'}).end();return;} // the presentation lives at /presentation
+  const route = ['/'].includes(pathname) ? '/index.html' : ['/presentation','/presentation/','/story','/story/'].includes(pathname) ? '/story.html' : ['/demo','/demo/'].includes(pathname) ? '/live.html' : pathname;
   const file=resolve(root,'.'+route);
   if(!file.startsWith(root+sep)){res.writeHead(403).end();return;}
   const info=await stat(file);
