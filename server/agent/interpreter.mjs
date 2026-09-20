@@ -1,4 +1,6 @@
 // GLM-5.3 intent interpreter: state + utterance -> { set, unset, tool, reply }.
+// The schema (function, prompt, validation) is pluggable per domain; the dinner intent is the default
+// and server/agent/site-interpreter.mjs supplies the website brief.
 import { parseJsonLoose, LlmError } from '../llm/nebius.mjs';
 import { FIELDS } from '../state/intent.mjs';
 
@@ -75,6 +77,9 @@ export function validateInterpretation(obj) {
   return out;
 }
 
+/** Dinner intent schema (default). */
+export const DINNER_SCHEMA = Object.freeze({ name: 'update_intent', stateKey: 'CURRENT_STATE', buildPrompt: buildSystemPrompt, buildFunction: buildIntentFunction, validate: validateInterpretation });
+
 /** A usable interpretation must carry at least one of set / reply / tool. */
 function isMeaningful(obj) {
   return Boolean(obj && typeof obj === 'object' && (('set' in obj) || (typeof obj.reply === 'string' && obj.reply.trim()) || ('tool' in obj)));
@@ -90,15 +95,15 @@ function isMeaningful(obj) {
  */
 export const INTERPRET_MODES = Object.freeze(['required', 'auto']);
 
-export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES, parallel = true } = {}) {
+export function createGlmInterpreter(llm, { schema = DINNER_SCHEMA, maxTokens = 300, attemptTimeoutMs = 8000, retries = 1, modes = INTERPRET_MODES, parallel = true } = {}) {
   async function once({ state, text, lang, tools, signal }, toolChoice) {
     const attempt = AbortSignal.timeout(attemptTimeoutMs);
     const r = await llm.chat({
       messages: [
-        { role: 'system', content: buildSystemPrompt(tools) },
-        { role: 'user', content: JSON.stringify({ CURRENT_STATE: state.intent, LANG: lang || 'en', UTTERANCE: text }) },
+        { role: 'system', content: schema.buildPrompt(tools) },
+        { role: 'user', content: JSON.stringify({ [schema.stateKey || 'CURRENT_STATE']: state.intent, LANG: lang || 'en', UTTERANCE: text }) },
       ],
-      tools: [buildIntentFunction(tools)],
+      tools: [schema.buildFunction(tools)],
       toolChoice,
       temperature: 0,
       maxTokens,
@@ -108,12 +113,12 @@ export function createGlmInterpreter(llm, { maxTokens = 300, attemptTimeoutMs = 
       if (err.code === 'aborted' && attempt.aborted && !signal?.aborted) err.code = 'timeout';
       throw err;
     });
-    const call = r.message?.tool_calls?.find((c) => c.function?.name === 'update_intent');
+    const call = r.message?.tool_calls?.find((c) => c.function?.name === schema.name);
     const raw = call?.function?.arguments ?? r.message?.content;
     let parsed = null;
     try { parsed = raw ? (typeof raw === 'string' ? parseJsonLoose(raw) : raw) : null; } catch { parsed = null; }
     if (!isMeaningful(parsed)) throw Object.assign(new LlmError(`Empty interpretation (${typeof toolChoice === 'string' ? toolChoice : 'named'})`, { code: 'parse' }), { latencyMs: r.latencyMs });
-    return { ...validateInterpretation(parsed), latencyMs: r.latencyMs, mode: toolChoice };
+    return { ...schema.validate(parsed), latencyMs: r.latencyMs, mode: toolChoice };
   }
 
   /** Run all modes in parallel; first meaningful result wins, the rest are aborted. */

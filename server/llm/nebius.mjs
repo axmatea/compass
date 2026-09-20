@@ -1,4 +1,4 @@
-// Minimal OpenAI-compatible client for Nebius Token Factory.
+// Minimal OpenAI-compatible chat client (Nebius Token Factory, General Compute, any /v1/chat/completions).
 // No SDK dependency: plain fetch, AbortSignal support, timeout, redacted errors.
 
 export class LlmError extends Error {
@@ -11,16 +11,16 @@ export class LlmError extends Error {
   }
 }
 
-export function createNebiusClient({ apiKey, baseUrl, model, timeoutMs = 20000, thinking = false, fetchImpl = fetch }) {
-  if (!apiKey) throw new LlmError('NEBIUS_API_KEY is not configured', { code: 'not_configured' });
+export function createNebiusClient({ apiKey, baseUrl, model, provider = 'nebius', timeoutMs = 20000, thinking = false, fetchImpl = fetch }) {
+  if (!apiKey) throw new LlmError(`${provider.toUpperCase()}_API_KEY is not configured`, { code: 'not_configured' });
 
-  // thinking=false disables GLM reasoning tokens (chat_template_kwargs.enable_thinking),
-  // which cuts latency and prevents reasoning from exhausting max_tokens.
+  // thinking=false disables GLM reasoning tokens on Nebius (chat_template_kwargs.enable_thinking),
+  // which cuts latency and prevents reasoning from exhausting max_tokens. Other providers ignore it.
   async function chat({ messages, tools, toolChoice, responseFormat, temperature = 0.2, maxTokens = 600, signal, thinking: think = thinking, extra = {} }) {
     const timeout = AbortSignal.timeout(timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
     const body = { model, messages, temperature, max_tokens: maxTokens, ...extra };
-    if (!think) body.chat_template_kwargs = { enable_thinking: false, ...(extra.chat_template_kwargs || {}) };
+    if (!think && provider === 'nebius') body.chat_template_kwargs = { enable_thinking: false, ...(extra.chat_template_kwargs || {}) };
     if (tools?.length) body.tools = tools;
     if (toolChoice) body.tool_choice = toolChoice;
     if (responseFormat) body.response_format = responseFormat;
@@ -51,10 +51,41 @@ export function createNebiusClient({ apiKey, baseUrl, model, timeoutMs = 20000, 
       finishReason: choice.finish_reason,
       usage: json.usage,
       latencyMs: Math.round(performance.now() - started),
+      provider,
+      model,
     };
   }
 
-  return { chat, model };
+  return { chat, model, provider };
+}
+export const createOpenAiCompatibleClient = createNebiusClient;
+
+/**
+ * Chain of clients: the primary answers; on transport/server errors (network, timeout, 5xx, 429)
+ * the next one takes the same request. Model-specific errors (4xx) are not retried elsewhere.
+ */
+export function createLlmChain(clients, { logger = console } = {}) {
+  if (!clients.length) throw new LlmError('No LLM configured', { code: 'not_configured' });
+  if (clients.length === 1) return clients[0];
+  const retriable = (err) => ['network', 'timeout'].includes(err.code) || (err.code === 'http' && (err.status >= 500 || err.status === 429));
+  return {
+    model: clients[0].model,
+    provider: clients[0].provider,
+    async chat(req) {
+      let lastErr;
+      for (let i = 0; i < clients.length; i++) {
+        try {
+          const out = await clients[i].chat(req);
+          return i ? { ...out, fellBack: true } : out;
+        } catch (err) {
+          lastErr = err;
+          if (req.signal?.aborted || !retriable(err) || i === clients.length - 1) throw err;
+          logger.warn?.('[llm]', clients[i].provider, 'failed', err.code, err.status ?? '', '-> trying', clients[i + 1].provider);
+        }
+      }
+      throw lastErr;
+    },
+  };
 }
 
 /** Extract the first JSON object from model text (tolerates ```json fences). */

@@ -5,7 +5,7 @@ import { isBusy, useCompassAgent } from '../voice/useCompassAgent'
 import type { ActionView, PlanView } from '../voice/useCompassAgent'
 import { FIELD_ORDER, formatValue, labelFor, time12 } from '../voice/format'
 import { t } from '../voice/i18n'
-import type { FieldValue, PatchOp } from '../voice/types'
+import type { FieldValue, PatchOp, SearchResult } from '../voice/types'
 import './compass-demo.css'
 
 /** Prepared example lines are content (what a user might say), not UI labels. */
@@ -59,12 +59,13 @@ function argsLine(args: Record<string, unknown>) {
 
 function ActionRow({ a, current, holding }: { a: ActionView; current: boolean; holding: boolean }) {
   const phase = a.status === 'running' && holding ? 'paused' : a.status
-  const status = phase === 'running' ? t.act.running : phase === 'paused' ? t.act.paused : phase === 'done' ? t.act.results(a.result?.results.length ?? 0) : phase === 'invalidated' ? t.act.invalidated((a.changedFields ?? []).map(f => labelFor(f).toLocaleLowerCase())) : t.act.stopped
+  const search = a.result as SearchResult | undefined
+  const status = phase === 'running' ? t.act.running : phase === 'paused' ? t.act.paused : phase === 'done' ? t.act.results(search?.results.length ?? 0) : phase === 'invalidated' ? t.act.invalidated((a.changedFields ?? []).map(f => labelFor(f).toLocaleLowerCase())) : t.act.stopped
   return (
     <div className={'cv-act is-' + phase + (current ? ' is-current' : '')}>
       <div className="cv-act-head"><span className="cv-act-args" dir="auto">{argsLine(a.args)}</span><span className="cv-act-status">{status}</span></div>
       <div className="cv-progress"><span key={a.run} /></div>
-      {current && a.status === 'done' && a.result && <ul className="cv-results">{a.result.results.map((r, i) => <li key={a.id + i} style={{ animationDelay: i * 90 + 'ms' }}><b dir="auto">{r.name}</b><span dir="auto">{r.area ?? t.act.nearby} · {t.act.km(r.distanceKm)}</span><small>{time12(r.availableAt) ?? ''}</small></li>)}</ul>}
+      {current && a.status === 'done' && search && <ul className="cv-results">{search.results.map((r, i) => <li key={a.id + i} style={{ animationDelay: i * 90 + 'ms' }}><b dir="auto">{r.name}</b><span dir="auto">{r.area ?? t.act.nearby} · {t.act.km(r.distanceKm)}</span><small>{time12(r.availableAt) ?? ''}</small></li>)}</ul>}
     </div>
   )
 }
@@ -117,7 +118,7 @@ export default function CompassDemo() {
     <div className="compass-demo cv">
       <div className={'cv-shell' + (a.hasPlan ? ' has-plan' : '')} data-state={a.orb}>
         <div className="cv-corner">
-          {a.voiceSource !== 'boson' && <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title={t.voiceTitle}><Speaker on={a.voiceOn} /><span className="cv-sr">{a.voiceOn ? t.voiceOn : t.voiceOff}</span></button>}
+          {a.voiceSource !== 'boson' && a.voiceSource !== 'gradium' && <button type="button" className={'cv-icon-btn' + (a.voiceOn ? ' is-on' : '')} onClick={() => a.setVoiceOn(!a.voiceOn)} disabled={!a.voiceSupported} aria-pressed={a.voiceOn} title={t.voiceTitle}><Speaker on={a.voiceOn} /><span className="cv-sr">{a.voiceOn ? t.voiceOn : t.voiceOff}</span></button>}
           <button type="button" className="cv-icon-btn" onClick={a.reset} title={t.reset}><Restart /><span className="cv-sr">{t.reset}</span></button>
         </div>
 

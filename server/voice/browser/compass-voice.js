@@ -16,13 +16,16 @@ export function createCompassVoice(opts = {}) {
     onStatus = () => {}, onEvent = () => {}, onTranscript = () => {}, onMetrics = () => {}, onError = () => {}, onMode = () => {},
     // 'headphones': full-duplex barge-in. 'speakers': while COMPASS plays, only loud mic frames pass (echo guard).
     output = 'speakers', echoGateRms = 0.045, connectTimeoutMs = 8000,
+    // 'dinner' (default, /api/turn) or 'site' (website brief, /api/site/turn). Same events, same voice.
+    domain = 'dinner',
   } = opts;
-  let mode = null, sessionId = opts.sessionId || null, ws = null, ctx = null, mic = null, player = null, stream = null;
+  const turnUrl = `${base}/api/${domain === 'site' ? 'site/' : ''}turn`;
+  let mode = null, provider = null, sessionId = opts.sessionId || null, ws = null, ctx = null, mic = null, player = null, stream = null;
   let playing = false, currentItem = null, lastStatus = null, markAt = null, flushRequestedAt = null;
   const items = new Map(); // itemId -> { start (samples enqueued before), len }
   let enqueued = 0; let preRoll = [];
   const status = (s) => { if (s !== lastStatus) { lastStatus = s; if (['INTERRUPTED', 'SPEECH_DETECTED'].includes(s)) markAt = performance.now(); onStatus(s); } };
-  const wsUrl = () => `${base.replace(/^http/, 'ws')}/api/voice/realtime${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`;
+  const wsUrl = () => { const q = new URLSearchParams(); if (sessionId) q.set('sessionId', sessionId); if (domain !== 'dinner') q.set('domain', domain); const qs = q.toString(); return `${base.replace(/^http/, 'ws')}/api/voice/realtime${qs ? `?${qs}` : ''}`; };
 
   async function setupAudio() {
     ctx = new AudioContext({ latencyHint: 'interactive' });
@@ -70,7 +73,7 @@ export function createCompassVoice(opts = {}) {
           return;
         }
         const m = JSON.parse(e.data);
-        if (m.type === 'ready') { ready = true; sessionId = m.sessionId; clearTimeout(timer); resolve(); }
+        if (m.type === 'ready') { ready = true; sessionId = m.sessionId; provider = m.provider || 'boson'; clearTimeout(timer); resolve(); }
         else if (m.type === 'status') status(m.status);
         else if (m.type === 'compass') onEvent(m.event);
         else if (m.type === 'transcript') onTranscript(m);
@@ -102,7 +105,7 @@ export function createCompassVoice(opts = {}) {
   }
   async function browserTurn(text) {
     status('THINKING');
-    const res = await fetch(`${base}/api/turn`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify({ sessionId, text }) });
+    const res = await fetch(turnUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify({ sessionId, text }) });
     const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     for (;;) {
       const { value, done } = await reader.read(); if (done) break;
@@ -135,10 +138,10 @@ export function createCompassVoice(opts = {}) {
         onError({ code: 'boson_unavailable', message: String(err.message || err), closeCode: err.code });
         try { ws?.close(); } catch {}
         try { stream?.getTracks().forEach((t) => t.stop()); await ctx?.close(); } catch {}
-        mode = 'browser';
+        mode = 'browser'; provider = 'browser';
         startBrowser();
       }
-      onMode(mode);
+      onMode(mode, provider);
       return mode;
     },
     sendText(text) { if (mode === 'boson') { markAt = performance.now(); send({ type: 'text', text }); } else if (mode === 'browser') browserTurn(text); },
@@ -150,6 +153,7 @@ export function createCompassVoice(opts = {}) {
       status('IDLE');
     },
     get mode() { return mode; },
+    get provider() { return provider; },
     get sessionId() { return sessionId; },
   };
 }

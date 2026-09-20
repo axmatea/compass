@@ -1,11 +1,12 @@
 /**
  * Turn transport. Identical contract (v1) for both modes; the UI never branches on mode.
- *   live: POST /api/turn with Accept: text/event-stream on the same origin. Keys stay server-side.
- *   mock: replay of the recorded backend session (mockBackend.ts).
+ *   live: POST <endpoint> with Accept: text/event-stream on the same origin. Keys stay server-side.
+ *   mock: replay of the recorded backend session (mockBackend.ts), dinner domain only.
  * Default (auto): live when GET /api/health reports the model configured, otherwise mock.
  * Override: ?backend=live|mock in the URL, or VITE_COMPASS_BACKEND at build time.
  * VITE_COMPASS_API_URL overrides the endpoint (default /api/turn).
- * If live is unreachable (network error or non-2xx before any event), the turn falls back to mock and is flagged.
+ * If live is unreachable (network error or non-2xx before any event), the turn falls back to mock and is flagged,
+ * unless the transport was created with allowMock:false (website domain has no recording): the error surfaces.
  */
 import { mockTurn, resetMockSession } from './mockBackend'
 import type { AgentEvent, TurnRequest, TurnResponse } from './types'
@@ -18,6 +19,7 @@ export interface TurnTransport {
   send(req: TurnRequest, opts: SendOptions): Promise<TurnResponse & { servedBy: TransportMode }>
   reset(): void
 }
+export interface TransportOptions { endpoint?: string; allowMock?: boolean }
 
 type ViteEnv = { env?: Record<string, string | undefined> }
 const env = (import.meta as ImportMeta & ViteEnv).env ?? {}
@@ -32,12 +34,12 @@ async function detect(): Promise<TransportMode> {
   try {
     const r = await fetch('/api/health', { cache: 'no-store' })
     if (!r.ok) return 'mock'
-    const h = await r.json() as { ok?: boolean; nebius?: { configured?: boolean } }
-    return h.ok && h.nebius?.configured ? 'live' : 'mock'
+    const h = await r.json() as { ok?: boolean; llm?: { configured?: boolean }; nebius?: { configured?: boolean } }
+    return h.ok && (h.llm?.configured ?? h.nebius?.configured) ? 'live' : 'mock'
   } catch { return 'mock' }
 }
 
-class Unreachable extends Error {}
+export class Unreachable extends Error {}
 
 async function sse(endpoint: string, req: TurnRequest, { onEvent, signal }: SendOptions): Promise<TurnResponse> {
   let res: Response
@@ -74,18 +76,18 @@ async function sse(endpoint: string, req: TurnRequest, { onEvent, signal }: Send
   return result
 }
 
-export function createTransport(requested: TransportMode | 'auto' = requestedMode(), endpoint = env.VITE_COMPASS_API_URL ?? '/api/turn'): TurnTransport {
+export function createTransport(requested: TransportMode | 'auto' = requestedMode(), { endpoint = env.VITE_COMPASS_API_URL ?? '/api/turn', allowMock = true }: TransportOptions = {}): TurnTransport {
   let resolved: Promise<TransportMode> | null = null
-  const ready = () => (resolved ??= requested === 'auto' ? detect() : Promise.resolve(requested))
+  const ready = () => (resolved ??= requested === 'auto' ? detect() : Promise.resolve(allowMock ? requested : 'live'))
   return {
     ready,
     async send(req, opts) {
       const mode = await ready()
-      if (mode === 'mock') return { ...(await mockTurn(req, opts.onEvent, opts.signal)), servedBy: 'mock' }
+      if (mode === 'mock' && allowMock) return { ...(await mockTurn(req, opts.onEvent, opts.signal)), servedBy: 'mock' }
       try {
         return { ...(await sse(endpoint, req, opts)), servedBy: 'live' }
       } catch (err) {
-        if (!(err instanceof Unreachable)) throw err
+        if (!(err instanceof Unreachable) || !allowMock) throw err
         console.warn('[compass] /api/turn unreachable, using recorded mock:', err.message)
         return { ...(await mockTurn(req, opts.onEvent, opts.signal)), servedBy: 'mock' }
       }

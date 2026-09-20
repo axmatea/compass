@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#05080b">
-  <title>COMPASS · Talk to COMPASS</title>
-  <meta name="description" content="COMPASS doesn't just answer you. It adapts while acting. Change your mind mid-task and watch the plan update.">
+  <title>COMPASS · Voice → Website</title>
+  <meta name="description" content="Describe a website out loud. COMPASS builds it, and when you change your mind mid-build it updates only what changed.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
     @font-face{font-family:Compass;src:url("/fonts/dm-sans.ttf") format("truetype");font-display:swap;font-weight:100 1000}
@@ -21,7 +21,7 @@
     .concept i{width:4px;height:4px;border-radius:50%;background:#bedced;box-shadow:0 0 10px #b7e0ff}
     .header-actions{display:flex;gap:28px}
     .header-actions a{opacity:.8}.header-actions a:hover{opacity:1}
-    .live-page{max-width:1180px;margin:0 auto;padding:2vh 4.5vw 60px}
+    .live-page{max-width:1500px;margin:0 auto;padding:1vh 3vw 40px}
     .live-head{margin:2vh 0 30px}
     .live-head p{margin:0 0 16px;font-size:10px;letter-spacing:.2em;color:#9fb3bf}
     .live-head h1{margin:0;font-size:clamp(34px,4.6vw,64px);line-height:1.06;letter-spacing:-.035em;font-weight:400}
@@ -38,9 +38,9 @@
 <body>
   <header class="masthead"><a class="wordmark" href="/" aria-label="COMPASS home"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.6"/><path d="M11 4.4 13.1 11 11 17.6 8.9 11Z"/></svg>COMPASS</a><nav class="header-actions" aria-label="Site"><a href="/presentation">Presentation</a></nav></header>
   <main class="live-page">
-    <h1 class="sr-only">Talk to COMPASS</h1>
+    <h1 class="sr-only">Voice to website: talk to COMPASS</h1>
     <div id="compass-live-root"></div>
   </main>
-  <script type="module" src="/src/voice/live.tsx"></script>
+  <script type="module" src="/src/site-demo/main.tsx"></script>
 </body>
 </html>

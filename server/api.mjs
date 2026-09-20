@@ -8,6 +8,8 @@
 //   POST /api/session              -> {sessionId, state}
 //   GET  /api/session/:id          -> {state}
 //   GET  /api/session/:id/events   -> SSE of all session events (all turns), for the live UI
+//   Website domain, identical contract under /api/site/… (turn, session, session/:id, session/:id/events),
+//   plus GET /api/site/session/:id/page -> the rendered page (HTML, strict CSP, session-lifetime only).
 //   GET  /api/health               -> presence flags only, never secrets
 //   GET  /api/voice/providers      -> voice provider capabilities
 //   GET  /api/voice/client.js      -> browser voice client (Boson realtime, browser fallback)
@@ -29,6 +31,8 @@ function voiceAsset(path) {
   return { body: assetCache.get(path), type: spec[1] };
 }
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+// Generated pages: no scripts, no network, no frames. Inline styles only.
+const PAGE_HEADERS = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'", 'X-Frame-Options': 'SAMEORIGIN', 'X-Robots-Tag': 'noindex' };
 const MAX_BODY = 16 * 1024;
 const MAX_TEXT = 500;
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -74,8 +78,74 @@ function openSse(res) {
 
 const publicState = (s) => s; // state holds no secrets; single place to filter later
 
-export function createApiHandler({ runtime, health, voice, turnsPerMinute = 30, logger = console }) {
+export function createApiHandler({ runtime, siteRuntime = null, health, voice, turnsPerMinute = 30, logger = console }) {
   const allowTurn = createRateLimiter({ perMinute: turnsPerMinute });
+  const domains = [['/api', runtime], ...(siteRuntime ? [['/api/site', siteRuntime]] : [])];
+
+  /** Session + turn routes for one runtime under `prefix`. Returns true when handled. */
+  async function domainRoutes(prefix, rt, req, res, path, method) {
+    if (path === `${prefix}/session` && method === 'POST') {
+      const s = rt.createSession();
+      send(res, 201, { sessionId: s.id, state: publicState(s.state) });
+      return true;
+    }
+
+    const m = new RegExp(`^${prefix.replace(/\//g, '\\/')}\\/session\\/([^/]+)(\\/events|\\/page)?$`).exec(path);
+    if (m && method === 'GET') {
+      const id = decodeURIComponent(m[1]);
+      const s = ID_RE.test(id) && rt.getSession(id);
+      if (!s) { send(res, 404, { error: 'session_not_found' }); return true; }
+      if (m[2] === '/page') {
+        const r = rt.render(id);
+        if (!r) { send(res, 404, { error: 'no_page' }); return true; }
+        res.writeHead(200, PAGE_HEADERS).end(r.html);
+        return true;
+      }
+      if (!m[2]) { send(res, 200, { state: publicState(s.state) }); return true; }
+      const write = openSse(res);
+      write('state', { state: publicState(s.state) });
+      const r = rt.render(id);
+      if (r) write('render', { type: 'render', sessionId: id, version: s.state.version, at: new Date().toISOString(), stage: 'resume', html: r.html, pending: r.pending, highlight: [], placeholder: r.placeholder });
+      const off = rt.subscribe(id, (ev) => write(ev.type, ev));
+      const beat = setInterval(() => res.write(': ping\n\n'), 15_000);
+      req.on('close', () => { clearInterval(beat); off(); });
+      return true;
+    }
+
+    if (path === `${prefix}/turn` && method === 'POST') {
+      if (!allowTurn(req.socket.remoteAddress || 'unknown')) { send(res, 429, { error: 'rate_limited' }); return true; }
+      const body = await readJson(req);
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text) { send(res, 400, { error: 'text_required' }); return true; }
+      if (text.length > MAX_TEXT) { send(res, 400, { error: 'text_too_long', max: MAX_TEXT }); return true; }
+      // F1: a client that sends a sessionId we no longer know (expired, server restarted,
+      // redeploy mid-demo) gets a fresh session AND an explicit sessionReset:true so the UI
+      // can say the previous plan was lost instead of silently starting over.
+      const requested = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
+      let sessionId = requested && ID_RE.test(requested) && rt.getSession(requested) ? requested : null;
+      const sessionReset = Boolean(requested) && !sessionId;
+      if (!sessionId) sessionId = rt.createSession().id;
+      const resetInfo = sessionReset ? { sessionReset: true } : {};
+
+      const wantsSse = /text\/event-stream/i.test(req.headers.accept || '');
+      if (wantsSse) {
+        const write = openSse(res);
+        if (sessionReset) write('session_reset', { type: 'session_reset', sessionId, reason: 'unknown_session' });
+        const result = await rt.runTurn(sessionId, text, { onEvent: (ev) => write(ev.type, ev) });
+        const { events, ...rest } = result;
+        write('result', { ...rest, ...resetInfo, state: publicState(rest.state) });
+        res.end();
+        return true;
+      }
+      const result = await rt.runTurn(sessionId, text);
+      const status = result.error === 'not_configured' ? 503 : 200;
+      const { events, ...rest } = result;
+      // JSON callers of the website domain get the page too (large); everyone else keeps events.
+      send(res, status, rt.domain?.render ? { ...rest, ...resetInfo, state: publicState(rest.state), page: rt.render(sessionId)?.html ?? null } : { ...result, ...resetInfo, state: publicState(result.state) });
+      return true;
+    }
+    return false;
+  }
 
   return async function handleApi(req, res) {
     const url = new URL(req.url, 'http://localhost');
@@ -92,53 +162,12 @@ export function createApiHandler({ runtime, health, voice, turnsPerMinute = 30, 
 
       if (path === '/api/voice/providers' && method === 'GET') return send(res, 200, { providers: voice.list(), active: voice.activeName, fallback: voice.fallback });
 
-      if (path === '/api/session' && method === 'POST') {
-        const s = runtime.createSession();
-        return send(res, 201, { sessionId: s.id, state: publicState(s.state) });
-      }
-
-      const m = /^\/api\/session\/([^/]+)(\/events)?$/.exec(path);
-      if (m && method === 'GET') {
-        const id = decodeURIComponent(m[1]);
-        const s = ID_RE.test(id) && runtime.getSession(id);
-        if (!s) return send(res, 404, { error: 'session_not_found' });
-        if (!m[2]) return send(res, 200, { state: publicState(s.state) });
-        const write = openSse(res);
-        write('state', { state: publicState(s.state) });
-        const off = runtime.subscribe(id, (ev) => write(ev.type, ev));
-        const beat = setInterval(() => res.write(': ping\n\n'), 15_000);
-        req.on('close', () => { clearInterval(beat); off(); });
-        return;
-      }
-
-      if (path === '/api/turn' && method === 'POST') {
-        if (!allowTurn(req.socket.remoteAddress || 'unknown')) return send(res, 429, { error: 'rate_limited' });
-        const body = await readJson(req);
-        const text = typeof body.text === 'string' ? body.text.trim() : '';
-        if (!text) return send(res, 400, { error: 'text_required' });
-        if (text.length > MAX_TEXT) return send(res, 400, { error: 'text_too_long', max: MAX_TEXT });
-        // F1: a client that sends a sessionId we no longer know (expired, server restarted,
-        // redeploy mid-demo) gets a fresh session AND an explicit sessionReset:true so the UI
-        // can say the previous plan was lost instead of silently starting over.
-        const requested = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
-        let sessionId = requested && ID_RE.test(requested) && runtime.getSession(requested) ? requested : null;
-        const sessionReset = Boolean(requested) && !sessionId;
-        if (!sessionId) sessionId = runtime.createSession().id;
-        const resetInfo = sessionReset ? { sessionReset: true } : {};
-
-        const wantsSse = /text\/event-stream/i.test(req.headers.accept || '');
-        if (wantsSse) {
-          const write = openSse(res);
-          if (sessionReset) write('session_reset', { type: 'session_reset', sessionId, reason: 'unknown_session' });
-          const result = await runtime.runTurn(sessionId, text, { onEvent: (ev) => write(ev.type, ev) });
-          const { events, ...rest } = result;
-          write('result', { ...rest, ...resetInfo, state: publicState(rest.state) });
-          res.end();
-          return;
+      // Longest prefix first so /api/site/... never falls into /api/session/...
+      for (const [prefix, rt] of [...domains].sort((a, b) => b[0].length - a[0].length)) {
+        if (path === prefix || path.startsWith(`${prefix}/`)) {
+          if (await domainRoutes(prefix, rt, req, res, path, method)) return;
+          if (prefix !== '/api') return send(res, 404, { error: 'not_found' });
         }
-        const result = await runtime.runTurn(sessionId, text);
-        const status = result.error === 'not_configured' ? 503 : 200;
-        return send(res, status, { ...result, ...resetInfo, state: publicState(result.state) });
       }
 
       if (path.startsWith('/api/voice/')) return send(res, 501, { error: 'voice_endpoint_not_implemented', provider: voice.activeName });
