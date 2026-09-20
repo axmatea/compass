@@ -51,7 +51,7 @@ export function attachVoiceServer(httpServer, { runtime, runtimes = null, config
       ? createGradiumBridge({
         client, runtime: rt, sessionId: sessionArg, logger,
         voiceId: config.gradium?.voiceId, voiceName: config.gradium?.voiceName, language: config.gradium?.language,
-        turnHorizonS: config.gradium?.turnHorizonS, turnThreshold: config.gradium?.turnThreshold,
+        turnHorizonS: config.gradium?.turnHorizonS, turnThreshold: config.gradium?.turnThreshold, turnCooldownFrames: config.gradium?.turnCooldownFrames,
         connect: connectGradiumUpstream || ((path) => connectGradium({ apiKey: config.gradium.apiKey, baseUrl: config.gradium.baseUrl, path })),
       })
       : createRealtimeBridge({

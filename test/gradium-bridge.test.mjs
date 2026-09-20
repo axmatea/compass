@@ -36,6 +36,25 @@ function siteRuntime() {
   return createAgentRuntime({ interpreter, tools: createToolRegistry(tools), domain: siteDomain });
 }
 
+test('gradium bridge: VAD phases: inactive arms, active opens (barge-in), inactive ends; cooldown after flush', async () => {
+  const ups = [];
+  const client = fakeClient();
+  const bridge = createGradiumBridge({ client, runtime: siteRuntime(), connect: async (path) => { const u = fakeUpstream(path); ups.push(u); return u; }, voiceId: 'v1', minTurnMs: 0, turnCooldownFrames: 2 });
+  await bridge.start();
+  const stt = ups[0]; stt.emit('ready', {});
+  const step = (p) => stt.emit('step', { vad: [{ horizon_s: 3, inactivity_prob: p }] });
+  step(0.9); assert.equal(bridge.status, 'LISTENING');
+  step(0.1); assert.equal(bridge.status, 'SPEECH_DETECTED', 'turn opens on the first active step');
+  stt.emit('text', { text: 'Build a coffee page' });
+  step(0.8);
+  assert.ok(stt.sent.some((m) => m.type === 'flush'), 'turn ends on inactive step');
+  stt.emit('flushed', {});
+  await until(() => ups.length >= 2);
+  step(0.1); step(0.1); // cooldown frames ignored
+  assert.notEqual(bridge.status, 'SPEECH_DETECTED');
+  bridge.close();
+});
+
 test('gradium bridge: audio forwarded in 3840-byte chunks after STT ready; ready reports provider', async () => {
   const ups = [];
   const client = fakeClient();
@@ -43,7 +62,8 @@ test('gradium bridge: audio forwarded in 3840-byte chunks after STT ready; ready
   await bridge.start();
   assert.equal(ups[0].path, '/speech/asr');
   assert.equal(ups[0].sent[0].type, 'setup');
-  assert.equal(ups[0].sent[0].input_format, 'pcm');
+  assert.equal(ups[0].sent[0].input_format, 'pcm_24000');
+  assert.equal(ups[0].sent[0].json_config.delay_in_frames, 12);
   bridge.onClientAudio(Buffer.alloc(2000)); // buffered until ready
   assert.equal(ups[0].sent.filter((m) => m.type === 'audio').length, 0);
   ups[0].emit('ready', { sample_rate: 24000, frame_size: 1920 });
@@ -70,6 +90,7 @@ test('gradium bridge: words -> VAD end of turn -> flush -> COMPASS turn -> TTS r
   stt.emit('step', { vad: [{ horizon_s: 0.5, inactivity_prob: 0.1 }, { horizon_s: 1, inactivity_prob: 0.9 }] });
   const flush = stt.sent.find((m) => m.type === 'flush');
   assert.ok(flush, 'flush sent on end of turn');
+  assert.equal(typeof flush.flush_id, 'string');
   stt.emit('flushed', { flush_id: flush.flush_id });
   await until(() => ups.length >= 2);
   const tts = ups[1];

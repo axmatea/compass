@@ -23,7 +23,7 @@ export const STATUS = Object.freeze({
 });
 const MS_BYTES = 48; // 24 kHz * 2 bytes / 1000
 
-export function createGradiumBridge({ client, runtime, connect, sessionId, voiceId, voiceName = 'gradium', language = 'en', turnHorizonS = 1, turnThreshold = 0.6, minTurnMs = 250, sttReconnectMs = 280_000, now = () => performance.now(), logger = console }) {
+export function createGradiumBridge({ client, runtime, connect, sessionId, voiceId, voiceName = 'gradium', language = 'en', turnHorizonS = 3, turnThreshold = 0.5, turnCooldownFrames = 8, minTurnMs = 250, sttReconnectMs = 280_000, now = () => performance.now(), logger = console }) {
   // connect(path) -> upstream { send, close, on, open }
   const known = sessionId && runtime.getSession(sessionId);
   const session = known || runtime.createSession();
@@ -42,6 +42,9 @@ export function createGradiumBridge({ client, runtime, connect, sessionId, voice
   let words = [];
   let flushSeq = 0;
   let pendingFlush = null; // flush_id we wait a `flushed` for
+  // Turn phases as in the Pipecat Gradium STT reference: IDLE -(inactive step)-> ARMED -(active step or text)-> OPEN -(inactive step)-> ENDING -(flushed)-> IDLE.
+  let phase = 'IDLE';
+  let cooldown = 0;
   let utteranceStartedAt = null;
   let sttReady = false;
   let sttTimer = null;
@@ -200,31 +203,47 @@ export function createGradiumBridge({ client, runtime, connect, sessionId, voice
     const clean = String(text || '').trim();
     if (!clean) return;
     if (!words.length) { utteranceStartedAt = now(); m.speechStartedAt = utteranceStartedAt; m.firstAudioAt = null; }
+    if (phase === 'ENDING') { /* tail tokens of the closing turn */ words.push(clean); return; }
+    if (phase !== 'OPEN') openTurn();
     userSpeaking = true;
     words.push(clean);
-    if (isPlaying() || (active && active.started)) interrupt('speech_started'); else setStatus(STATUS.SPEECH_DETECTED);
     client.sendJson({ type: 'transcript', role: 'user', text: words.join(' '), final: false, source: 'gradium-stt' });
   }
+  function openTurn() {
+    phase = 'OPEN';
+    if (!utteranceStartedAt || !words.length) utteranceStartedAt = now();
+    userSpeaking = true;
+    if (isPlaying() || (active && active.started)) interrupt('speech_started'); else setStatus(STATUS.SPEECH_DETECTED);
+  }
   function onStep(e) {
-    if (!words.length || pendingFlush != null) return;
     const vad = Array.isArray(e.vad) ? e.vad : [];
+    if (!vad.length) return;
+    if (cooldown > 0) { cooldown--; return; }
     const pick = vad.reduce((best, v) => (best == null || Math.abs(v.horizon_s - turnHorizonS) < Math.abs(best.horizon_s - turnHorizonS) ? v : best), null);
     if (!pick || pick.inactivity_prob == null) return;
-    if (pick.inactivity_prob > turnThreshold && now() - utteranceStartedAt >= minTurnMs) endTurn();
+    const inactive = pick.inactivity_prob >= turnThreshold;
+    if (phase === 'IDLE' && inactive) phase = 'ARMED';
+    else if (phase === 'ARMED' && !inactive) openTurn();
+    else if (phase === 'OPEN' && inactive && now() - utteranceStartedAt >= minTurnMs) endTurn();
+    // ENDING ignores the signal until `flushed`.
   }
   function endTurn() {
-    if (!words.length || pendingFlush != null) return;
+    if (pendingFlush != null) return;
+    phase = 'ENDING';
+    if (!words.length) { phase = 'IDLE'; userSpeaking = false; return idleStatus(); }
     pendingFlush = ++flushSeq;
     m.speechStoppedAt = now();
     userSpeaking = false; awaitingTurn = true; setStatus(STATUS.THINKING);
-    stt?.send({ type: 'flush', flush_id: pendingFlush });
+    stt?.send({ type: 'flush', flush_id: String(pendingFlush) });
     // Never wait forever for `flushed`.
     setTimeout(() => { if (pendingFlush === flushSeq) finalizeTurn(); }, 1500).unref?.();
   }
   function finalizeTurn() {
     pendingFlush = null;
+    phase = 'IDLE';
+    cooldown = turnCooldownFrames;
     const text = words.join(' ').replace(/\s+/g, ' ').trim();
-    words = [];
+    words = []; utteranceStartedAt = null;
     if (!text) { awaitingTurn = false; return idleStatus(); }
     runCompassTurn(text).catch((err) => { logger.error?.('[gradium] turn', String(err?.message || err).slice(0, 200)); client.sendJson({ type: 'error', code: 'turn_failed', message: 'Voice turn failed' }); awaitingTurn = false; idleStatus(); });
   }
@@ -240,7 +259,7 @@ export function createGradiumBridge({ client, runtime, connect, sessionId, voice
     });
     up.on('text', (e) => onWords(e.text));
     up.on('step', onStep);
-    up.on('flushed', (e) => { if (pendingFlush != null && (e.flush_id == null || e.flush_id === pendingFlush)) finalizeTurn(); });
+    up.on('flushed', (e) => { if (pendingFlush != null && (e.flush_id == null || String(e.flush_id) === String(pendingFlush))) setTimeout(finalizeTurn, 100).unref?.(); });
     up.on('error', (e) => client.sendJson({ type: 'error', code: 'gradium_stt_error', message: String(e.message || '').slice(0, 200) }));
     up.on('__close', ({ code }) => {
       if (closed || stt !== up) return;
@@ -290,7 +309,7 @@ export function createGradiumBridge({ client, runtime, connect, sessionId, voice
       } else if (msg.type === 'text' && typeof msg.text === 'string' && msg.text.trim()) {
         if (isPlaying() || active) interrupt('text');
         m.speechStoppedAt = now();
-        words = []; pendingFlush = null;
+        words = []; pendingFlush = null; phase = 'IDLE';
         runCompassTurn(msg.text.trim().slice(0, 500)).catch((err) => { logger.error?.('[gradium] turn', String(err?.message || err).slice(0, 200)); client.sendJson({ type: 'error', code: 'turn_failed', message: 'Voice turn failed' }); idleStatus(); });
       } else if (msg.type === 'bye') shutdown(1000, 'bye');
     },

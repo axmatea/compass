@@ -10,8 +10,9 @@ export const GRADIUM_BASE_URL = 'wss://api.gradium.ai/api';
 export const AUDIO_RATE = 24000; // PCM16 LE mono, both directions (TTS asks for pcm_24000)
 export const STT_CHUNK_BYTES = 1920 * 2; // 80 ms frames, the documented chunk size
 
-export function sttSetup({ language = 'en', delayInFrames = 8 } = {}) {
-  return { type: 'setup', model_name: 'default', input_format: 'pcm', json_config: { language, delay_in_frames: delayInFrames } };
+// Mirrors the Pipecat GradiumSTTService reference (pipecat/services/gradium/stt.py): pcm_<rate>, delay_in_frames 12 (80 ms frames).
+export function sttSetup({ language = 'en', delayInFrames = 12 } = {}) {
+  return { type: 'setup', model_name: 'default', input_format: 'pcm_24000', json_config: { language, delay_in_frames: delayInFrames } };
 }
 export function ttsSetup({ voiceId, modelName = 'default' }) {
   return { type: 'setup', voice_id: voiceId, model_name: modelName, output_format: 'pcm_24000' };
@@ -21,7 +22,7 @@ export function ttsSetup({ voiceId, modelName = 'default' }) {
 export function connectGradium({ apiKey, baseUrl = GRADIUM_BASE_URL, path, WebSocketImpl = WebSocket, openTimeoutMs = 8000 }) {
   if (!apiKey) return Promise.reject(Object.assign(new Error('GRADIUM_API_KEY not configured'), { code: 'not_configured' }));
   return new Promise((resolve, reject) => {
-    const socket = new WebSocketImpl(`${baseUrl}${path}`, { headers: { 'x-api-key': apiKey }, handshakeTimeout: openTimeoutMs });
+    const socket = new WebSocketImpl(`${baseUrl}${path}`, { headers: { 'x-api-key': apiKey, 'x-api-source': 'compass' }, handshakeTimeout: openTimeoutMs });
     const handlers = new Map();
     const emit = (type, payload) => { for (const fn of handlers.get(type) || []) fn(payload); for (const fn of handlers.get('*') || []) fn(payload); };
     const api = {
