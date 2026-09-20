@@ -23,7 +23,7 @@ const notes = [
  'Light is superseded, dark becomes active, and the cinematic hero is added to the plan.',
  'The site is rebuilt where it changed, not from scratch.',
  'The result: the same page, evolved. Dark, cinematic, still the same company and offer.',
- 'Try it live at /demo: the same interaction model on a planning task today. Say it, interrupt it, watch it update. Website building is in early access.',
+ 'Try it live at /demo: say the page you want, interrupt it mid-build, watch only the changed parts update. The page is rendered for the session only, nothing is published.',
  'COMPASS understands intent. It keeps acting.'
 ];
 let starts = [], active = -1, position = 0, queued = false;

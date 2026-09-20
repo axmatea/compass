@@ -50,5 +50,6 @@
 .film-frame{margin:0}
 .film-frame video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:18px;border:1px solid #d7f2ff26;box-shadow:0 50px 140px -50px #000,0 0 80px #8bc8ee14;outline:0}
 .film-frame figcaption{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:10px;letter-spacing:.2em;color:#8ca1ae}
+.film-frame figcaption a{color:#c4ced5}
 .film-hint{position:static}
 @media(max-width:700px){.scene-film{padding:92px 5vw 80px}.film-frame video{border-radius:12px}.film-frame figcaption{font-size:8px}}

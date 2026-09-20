@@ -66,3 +66,7 @@ function frame() {
 const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(frame) } }
 addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll, { passive: true })
 frame()
+
+// The film pauses when it leaves the viewport, so audio never plays over the rest of the page.
+const filmEl = document.getElementById('film-video')
+if (filmEl && 'IntersectionObserver' in window) new IntersectionObserver(([e]) => { if (!e.isIntersecting && !filmEl.paused) filmEl.pause() }, { threshold: 0.2 }).observe(filmEl)
