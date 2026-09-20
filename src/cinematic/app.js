@@ -21,6 +21,7 @@ const notes = [
  'Voice prompt two, while it is still working: Actually, make it warmer. Make the hero more ambitious, and add a pricing section.',
  'Only what changed changes. AI company, premium and minimal are kept. COMPASS keeps acting, no restart.',
  'The brief after the change: dark becomes warm, the hero becomes ambitious, pricing is added, everything else is kept.',
+ 'Vincent: how it runs. The conversation continues while the work runs: an instant model keeps contact, the smart agent refines the request with useful questions, heavy tasks run in parallel.',
  'Vincent: under the hood. Voice runs through Gradium realtime over a server-side bridge: streaming speech to text with semantic turn detection, streaming speech back, and a barge-in simply becomes the next turn. Reasoning runs on General Compute, MiniMax M2.7: every sentence becomes a structured brief, and a change patches only the fields that moved. Then only the sections that depend on the change are rewritten and the page renders live in a sandbox. The reply comes back at once while the copy keeps running; a new sentence cancels only what it invalidated. Nebius GLM-5.3, Boson Higgs and browser speech stay wired as fallbacks.',
  'And websites are only the beginning. What we really built is a different relationship between humans and AI. Today we directed a website. The same interaction can eventually direct software, research, workflows, creative work, anything an agent can act on. We believe the next interface is not another dashboard.',
  'COMPASS understands. COMPASS acts. Your intent becomes software. Thank you.'
@@ -29,27 +30,26 @@ let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
 let media = {};
-const F = 0; // stage order: open, film, experience, website, demo, prompt 1, prompt 2, adapt, brief, under the hood, beyond, close
+const F = 0; // stage order: open, film, experience, website, demo, prompt 1, prompt 2, adapt, brief, how it runs, under the hood, beyond, close
 const LAST = scenes.length - 1;
 const FILM = scenes.indexOf($('#scene-film'));
 const CORRECTION = scenes.indexOf($('#scene-6'));
-const film = $('#film'); // self-hosted film (same encodes as the website); paused whenever the scene changes
-const pauseFilm = () => { if (film && !film.paused) film.pause(); };
+const film = $('#film'); // YouTube iframe (enablejsapi): paused through postMessage whenever the scene changes
+const pauseFilm = () => film?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
 let resumeAfterFilm = false; // autoplay mode waits for the film to end, then continues
 const filmBox = film?.parentElement, filmPlay = $('#film-play');
-const startFilm = () => { if (!film) return; film.controls = true; film.play().catch(() => {}); };
+const startFilm = () => film?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
 filmPlay?.addEventListener('click', startFilm);
-film?.addEventListener('play', () => filmBox?.classList.add('is-playing'));
 const sceneMedia = { 0: 'chaos', 5: 'speak' };
 const orbPos = [
  [80, 52, .28, 0], [50, 50, .2, 0], [50, 30, .92, 1], [50, 29, .62, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [81, 45, .44, 1], [50, 28, .58, 1],
- [50, 77, .18, 1], [88, 18, .2, 0], [50, 17, .36, .8], [50, 18, .48, 1]
+ [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [50, 17, .36, .8], [50, 18, .48, 1]
 ];
 const mobileOrbPos = [
  [75, 35, .25, 0], [50, 50, .2, 0], [50, 31, 1, 1], [50, 27, .7, 1],
  [84, 24, .3, .6], [84, 23, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1],
- [50, 90, .14, 1], [86, 17, .18, 0], [50, 16, .4, .7], [50, 17, .55, 1]
+ [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [50, 16, .4, .7], [50, 17, .55, 1]
 ];
 
 $('#contents').innerHTML = scenes.map((s, i) => `<a href="#${s.id}" data-scene="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${s.dataset.label}</a>`).join('');
@@ -107,7 +107,7 @@ function render() {
  }
  const lightIn = clamp(q - 7), lightOut = clamp(q - 8);
  $('.light-world').style.clipPath = `inset(${(1 - lightIn) * 100}% 0 ${lightOut * 100}% 0)`;
- const productIn = clamp(q - 8), productOut = clamp(q - 9);
+ const productIn = clamp(q - 8), productOut = clamp(q - 10);
  $('.product-world').style.clipPath = `inset(${(1 - productIn) * 100}% 0 ${productOut * 100}% 0)`;
  const positions = mobileQuery.matches ? mobileOrbPos : orbPos;
  const a = positions[lower], b = positions[upper];
@@ -116,7 +116,7 @@ function render() {
  orb.style.transform = `translate(-50%,-50%) scale(${mix(a[2], b[2], t)})`;
  orb.style.opacity = mix(a[3], b[3], t);
  $('.orb-wave').style.opacity = clamp(1 - Math.abs(q - 2));
- $('.world-horizon').style.opacity = clamp(q - 10);
+ $('.world-horizon').style.opacity = clamp(q - 11);
  scenes.forEach((scene, i) => {
   const distance = i - position;
   const copy = scene.querySelector('.scene-copy');
@@ -173,9 +173,9 @@ function goTo(index, animate = true) {
 }
 function queueAdvance() {
  const current = Math.round(scrollPosition());
-  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 9000 : 5000;
- // On the film scene, autoplay does not cut the film: it plays through, then the deck continues.
- if (current === FILM) { stopAuto(); resumeAfterFilm = true; startFilm(); return; }
+  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 8000 : current === 10 ? 9000 : 5000;
+ // On the film scene, autoplay does not cut the film: it starts it and hands control to the presenter.
+ if (current === FILM) { stopAuto(); startFilm(); return; }
  timer = window.setTimeout(() => {
   if (!playing) return;
   if (current === LAST) { stopAuto(); return; }
