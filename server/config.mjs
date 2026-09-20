@@ -42,8 +42,11 @@ export function loadConfig(env = process.env) {
     voiceName: env.GRADIUM_VOICE_NAME || 'zoey',
     language: env.GRADIUM_STT_LANGUAGE || 'en',
     // End of turn when the semantic VAD's inactivity probability at this horizon exceeds the threshold.
-    turnHorizonS: Number(env.GRADIUM_TURN_HORIZON_S || 1),
-    turnThreshold: Number(env.GRADIUM_TURN_THRESHOLD || 0.6),
+    // Turn-taking recipe from the Pipecat Gradium STT reference: watch the 3 s end-pointing horizon,
+    // inactivity >= 0.5 arms/ends a turn, ignore 8 step messages after each flush.
+    turnHorizonS: Number(env.GRADIUM_EOT_HORIZON_S || env.GRADIUM_TURN_HORIZON_S || 3),
+    turnThreshold: Number(env.GRADIUM_EOT_THRESHOLD || env.GRADIUM_TURN_THRESHOLD || 0.5),
+    turnCooldownFrames: Number(env.GRADIUM_POST_FLUSH_COOLDOWN_FRAMES || 8),
   };
   const wanted = ['gradium', 'boson', 'browser'].includes(env.VOICE_PROVIDER) ? env.VOICE_PROVIDER : 'auto';
   const voiceProvider = wanted !== 'auto' ? wanted : gradium.apiKey ? 'gradium' : boson.apiKey ? 'boson' : 'browser';
