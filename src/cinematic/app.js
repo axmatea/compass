@@ -15,7 +15,7 @@ const notes = [
  'Hi everyone. We have spent years learning how to talk to computers. Clicking. Typing. Learning interfaces. And now, with AI, we are still doing basically the same thing: prompting machines. But what if instead you could simply express what you want, and watch it become real? That is what we built. This is COMPASS.',
  'Play the film. Do not talk over it. Let it finish.',
  'That is the experience we wanted to create. Not another prompt box. An agent you can actually direct with your voice.',
- 'Open the website. Everything you see here is the visual language of COMPASS. But the interesting part is what happens when we stop watching the concept and actually use it.',
+ 'Open the website and let it build itself: one sentence builds a cool, generic site; a second sentence, mid-build, makes it warmer and bolder without starting over. That is the visual language of COMPASS. The interesting part is what happens when we stop watching the concept and actually use it.',
  'Go to the demo. We needed a task where you could actually see intelligence working. We chose building a website. Not because COMPASS is just a website builder, but because it makes the interaction visible. Let us build one.',
  'Voice prompt one: Build me a premium website for an AI company. Make it minimal, dark and cinematic. Pause. Let the site build.',
  'Voice prompt two, while it is still working: Actually, make it warmer. Make the hero more ambitious, and add a pricing section.',

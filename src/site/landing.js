@@ -23,7 +23,7 @@ const split = node => {
 document.querySelectorAll('.reveal').forEach(el => { wi = 0; split(el) })
 
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } }), { rootMargin: '0px 0px -12% 0px' })
-document.querySelectorAll('section:not(.hero):not(.stage) .wrap, .reveal').forEach(el => io.observe(el))
+document.querySelectorAll('section:not(.hero):not(.stage) .wrap, .reveal').forEach(el => { if (!el.closest('.hero')) io.observe(el) }) // the hero reveals are directed by the overture
 
 // Hero: the art drifts and swells as the journey begins, the copy lifts away.
 const hero = document.querySelector('.hero')
@@ -82,3 +82,56 @@ if (live) fetch('/api/health', { cache: 'no-store' }).then(r => r.ok ? r.json() 
   live.querySelector('span').textContent = `Live now · voice ${names[voice] || voice} · reasoning ${names[llm] || llm}${model}${failover}`
   live.hidden = false
 })
+
+// ---- the overture: the page builds itself from one sentence, then evolves from a second. The same page, no restart. Any gesture skips.
+const ov = document.getElementById('overture')
+const ovLine = document.getElementById('ov-line'), ovStatus = document.getElementById('ov-status'), ovReply = document.getElementById('ov-reply'), ovReplay = document.getElementById('ov-replay')
+const coolH1 = document.querySelector('.h1s .v-cool'), warmH1 = document.querySelector('.h1s .v-warm')
+const SAY1 = 'Build me a premium website for an AI company. Make it minimal, dark and cinematic.'
+const SAY2 = 'Actually, make it warmer. Make the hero more ambitious.'
+const REPLY = 'Warmer. A bolder hero. Everything else kept.'
+const STEPS = ['Understanding', 'Structure', 'Layout', 'Design', 'Content', 'Preview']
+const SPEED = 28
+let ovTimers = [], ovTyping = 0, ovRunning = false
+const later = (ms, fn) => ovTimers.push(setTimeout(fn, ms))
+function typeLine(text) {
+  clearTimeout(ovTyping); ovLine.classList.add('typing'); let k = 0
+  const tick = () => { ovLine.textContent = text.slice(0, ++k); if (k < text.length) ovTyping = setTimeout(tick, SPEED); else ovLine.classList.remove('typing') }
+  tick()
+}
+function ovFinish() {
+  if (!ovRunning) return
+  ovRunning = false
+  ovTimers.forEach(clearTimeout); ovTimers = []; clearTimeout(ovTyping)
+  document.body.classList.remove('ov-blank', 'ov-build', 'cool', 'overture-on'); document.body.classList.add('warm', 'ov-done')
+  coolH1.classList.remove('in'); warmH1.classList.add('in')
+  ov.classList.add('ov-off'); later(800, () => { ov.hidden = true })
+  ovReplay.hidden = false
+}
+function ovStart() {
+  ovTimers.forEach(clearTimeout); ovTimers = []; clearTimeout(ovTyping)
+  ovRunning = true
+  ov.hidden = false; ov.className = 'overture'; ovLine.textContent = ''; ovStatus.textContent = ''; ovReply.textContent = ''; ovReplay.hidden = true
+  document.body.classList.add('overture-on', 'ov-blank', 'cool'); document.body.classList.remove('warm', 'ov-done', 'ov-build')
+  coolH1.classList.remove('in'); warmH1.classList.remove('in')
+  scrollTo(0, 0)
+  let t = 600
+  later(t, () => ov.classList.add('ov-listen'))
+  later(t += 500, () => typeLine(SAY1))
+  t += SAY1.length * SPEED + 500
+  later(t, () => { ov.classList.remove('ov-listen'); ov.classList.add('ov-dock'); document.body.classList.remove('ov-blank'); document.body.classList.add('ov-build'); coolH1.classList.add('in') })
+  STEPS.forEach((s, i) => later(t + 200 + i * 450, () => { ovStatus.innerHTML = `<b>${s}</b>` + (i < STEPS.length - 1 ? ' · ' + STEPS.slice(i + 1).join(' · ') : '') }))
+  later(t += 2900, () => { ov.classList.add('ov-listen'); typeLine(SAY2) }) // the interruption lands while the preview is still being finished
+  t += SAY2.length * SPEED + 500
+  later(t, () => { ov.classList.remove('ov-listen'); ovStatus.innerHTML = '<b>Updating only what changed</b>'; document.body.classList.remove('cool'); document.body.classList.add('warm'); coolH1.classList.remove('in'); warmH1.classList.add('in') })
+  later(t += 1500, () => { ovReply.textContent = REPLY; ovStatus.innerHTML = '<b>Rendered v2</b> · theme and hero updated · everything else kept' })
+  later(t += 2300, ovFinish)
+}
+const wantsOverture = Boolean(ov && coolH1 && warmH1) && !reduce && !location.hash && !/\bstatic\b/.test(location.search)
+if (ov && !wantsOverture) { document.body.classList.add('warm', 'ov-done'); warmH1?.classList.add('in'); ov.hidden = true; if (ovReplay && coolH1 && !reduce) ovReplay.hidden = false }
+if (wantsOverture) {
+  ovStart()
+  const skip = e => { if (e.type === 'pointerdown' && e.target.closest('#ov-replay')) return; ovFinish() }
+  addEventListener('wheel', skip, { passive: true }); addEventListener('touchstart', skip, { passive: true }); addEventListener('keydown', skip); addEventListener('pointerdown', skip)
+}
+ovReplay?.addEventListener('click', () => { ovReplay.hidden = true; ovStart() })
