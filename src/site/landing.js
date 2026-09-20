@@ -42,6 +42,7 @@ function setStep(i) {
   if (i === step) return
   const prev = step; step = i
   stage.dataset.step = i
+  document.documentElement.classList.toggle('warm', i === 3)
   steps.forEach((s, j) => { s.classList.toggle('on', j === i); s.classList.toggle('past', j < i) })
   browser.classList.toggle('blank', i === 0)
   browser.classList.toggle('building', i === 1)
@@ -56,6 +57,8 @@ function frame() {
     const t = Math.min(1, Math.max(0, y / vh))
     hero.style.setProperty('--hy', (t * 80).toFixed(1)); hero.style.setProperty('--hs', (t * .08).toFixed(3)); hero.style.setProperty('--hf', (t * 1.4).toFixed(3))
   }
+  document.documentElement.style.setProperty('--needle', ((y / Math.max(1, document.documentElement.scrollHeight - vh)) * 360).toFixed(1))
+  if (!reduce) { const t = y / Math.max(1, document.documentElement.scrollHeight - vh); document.documentElement.style.setProperty('--ax', (t * 260).toFixed(0)); document.documentElement.style.setProperty('--ay', (t * -180).toFixed(0)) }
   if (stage) {
     if (reduce) { setStep(3); return }
     const top = stage.offsetTop, len = stage.offsetHeight - vh
@@ -82,3 +85,14 @@ if (live) fetch('/api/health', { cache: 'no-store' }).then(r => r.ok ? r.json() 
   live.querySelector('span').textContent = `Live now · voice ${names[voice] || voice} · reasoning ${names[llm] || llm}${model}${failover}`
   live.hidden = false
 })
+
+// Arrival: the wordmark condenses once. Then the four beats of the product truth take turns.
+requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add('loaded')))
+const beats = [...document.querySelectorAll('.truth-line li')]
+if (beats.length && !reduce) { let k = 0; setInterval(() => { beats[k].classList.remove('on'); k = (k + 1) % beats.length; beats[k].classList.add('on') }, 2400) }
+
+// Hero depth: the art and the copy answer the pointer, gently and in opposite directions.
+if (hero && !reduce && matchMedia('(pointer:fine)').matches) {
+  hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3)); hero.style.setProperty('--my', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3)) }, { passive: true })
+  hero.addEventListener('pointerleave', () => { hero.style.setProperty('--mx', '0'); hero.style.setProperty('--my', '0') })
+}

@@ -86,3 +86,10 @@
 .diagram{margin:0;border-radius:16px;overflow:hidden;border:1px solid #d7f2ff1f;box-shadow:0 50px 140px -50px #000;background:#0b1522}
 .diagram img{display:block;width:100%;height:auto}
 @media(max-width:700px){.yt{border-radius:12px}.scene-diagram{padding:92px 4vw 100px}.diagram{border-radius:10px}}
+
+/* One voice: the presentation sets its headings in Sora, like the website. */
+.scene h1,.scene h2{font-family:'Sora',system-ui,sans-serif;font-variation-settings:'wght' 300;letter-spacing:-.025em}
+.scene h1 em,.scene h2 em{color:#dcbf7c}
+.wide-brand{font-variation-settings:'wght' 340;letter-spacing:.4em}
+.wordmark{font-family:'Sora',system-ui,sans-serif;font-variation-settings:'wght' 380}
+.eyebrow{font-family:'Sora',system-ui,sans-serif}

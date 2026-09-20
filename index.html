@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03060c"><meta name="compass-design" content="voice-builder-v3">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03060c"><meta name="compass-design" content="voice-builder-v4">
 <title>COMPASS · Your intent becomes software.</title>
 <meta name="description" content="COMPASS is a voice agent that builds websites with you. Say what you want, change your mind mid-build, and it keeps going.">
 <link rel="stylesheet" href="/src/site/landing.css">
@@ -10,9 +10,10 @@
 </head>
 <body>
 <a class="skip" href="#say">Skip to content</a>
+<div class="ambient" aria-hidden="true"><i class="a1"></i><i class="a2"></i></div>
 
 <header class="bar">
-<a class="brand" href="/" aria-label="COMPASS"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.6"/><path d="M11 4.4 13.1 11 11 17.6 8.9 11Z"/></svg><span>COMPASS</span></a>
+<a class="brand" href="/" aria-label="COMPASS"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.6"/><path class="needle" d="M11 4.4 13.1 11 11 17.6 8.9 11Z"/></svg><span>COMPASS</span></a>
 <nav class="menu" aria-label="Primary"><a href="#film">Film</a><a href="#say">How it works</a><a href="#intel">Intelligence</a><a href="/presentation">Presentation</a></nav>
 <a class="pill" href="/demo">Talk to COMPASS</a>
 <button class="burger" aria-label="Menu" aria-expanded="false"><i></i><i></i></button>
@@ -26,7 +27,7 @@
 <h1 class="reveal">Your intent<br><em>becomes software.</em></h1>
 <p class="sub">COMPASS is a voice agent that understands evolving intent. <br>Say what you want, change your mind mid-build, it keeps going.</p>
 <div class="actions"><a class="cta" href="/demo">Talk to COMPASS<svg viewBox="0 0 16 11" aria-hidden="true"><path d="M0 5.5H14.6M10.3 1.2 14.9 5.5 10.3 9.8"/></svg></a><a class="ghost" href="#film">Watch the film</a></div>
-<ul class="feats" aria-label="What COMPASS does"><li>Understands</li><li>Orchestrates</li><li>Builds</li><li>Evolves</li></ul>
+<ol class="truth-line" aria-label="How COMPASS works"><li class="on">You express intent.</li><li>Software materializes.</li><li>You change your mind.</li><li>It evolves with you.</li></ol>
 </div>
 </section>
 
@@ -65,11 +66,13 @@
 <div class="wrap">
 <p class="eyebrow center">MULTIPLE INTELLIGENCES · ONE DIRECTION</p>
 <h2 class="center reveal">One agent.<br><em>The right intelligence for each move.</em></h2>
+<div class="stack-wrap"><svg class="signal" viewBox="0 0 1000 2" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="1" x2="1000" y2="1"/></svg>
 <div class="stack4">
 <div><span>Voice</span><b>Gradium realtime</b><small>Streaming speech in and out with semantic turn detection. Barge-in becomes the next turn. Server-side bridge, no key in the browser.</small></div>
 <div><span>Reasoning</span><b>MiniMax M2.7 on General Compute</b><small>Every sentence becomes a structured brief. A change patches only the fields that moved.</small></div>
 <div><span>Memory</span><b>A brief that survives interruptions</b><small>Business, audience, tone, theme, accent, hero, sections. Kept across every turn, never rebuilt from scratch.</small></div>
 <div><span>Action</span><b>Copy and render</b><small>Only the sections that depend on the change are rewritten. The page renders live, sandboxed.</small></div>
+</div>
 </div>
 <p class="live-stack" id="live-stack" hidden><i></i><span></span></p>
 </div>
