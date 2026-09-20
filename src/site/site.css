@@ -62,3 +62,14 @@
 .diagram{margin:0;border-radius:16px;overflow:hidden;border:1px solid #d7f2ff1f;box-shadow:0 50px 140px -50px #000;background:#0b1522}
 .diagram img{display:block;width:100%;height:auto}
 @media(max-width:700px){.yt{border-radius:12px}.scene-diagram{padding:92px 4vw 100px}.diagram{border-radius:10px}}
+
+/* Presentation, stage script scenes. */
+.scene-context .product-actions{margin-top:30px}
+.scene-stack{color:#e4eef4}
+.stack-3{grid-template-columns:repeat(3,1fr);max-width:1000px;gap:38px}
+.stack-3 strong{display:block;font-size:22px;margin-bottom:12px}
+.stack-3 small{display:block;font-size:13px;line-height:1.6;color:#a9bcc8}
+.scene-beyond .intent-row{margin-bottom:6px}
+.scene-beyond .support{margin-top:26px}
+@media(max-width:700px){.stack-3{grid-template-columns:1fr;gap:24px;max-width:none}.stack-3 strong{font-size:19px}}
+.scene-correction .correction-state{flex-wrap:wrap;row-gap:12px}

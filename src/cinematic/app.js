@@ -12,39 +12,40 @@ const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
 const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
- 'The film, from YouTube. Play it with sound, then scroll into the presentation.',
- 'COMPASS is a better interaction model for voice agents. It understands intent as it evolves and continues acting instead of starting over.',
- 'One plain sentence: a premium website for an AI company. No form, no template picker.',
- 'COMPASS. It understands evolving intent. It continues acting.',
- 'The sentence becomes a structured plan: AI company, premium, light theme, hero, early access.',
- 'COMPASS starts building immediately: the hero section, light theme.',
- 'Mid-build, the user changes their mind: make it darker, give the hero a cinematic feel. This is the moment that matters.',
- 'Only what changed changes. AI company, premium and early access are kept.',
- 'Light is superseded, dark becomes active, and the cinematic hero is added to the plan.',
- 'The site is rebuilt where it changed, not from scratch.',
- 'The result: the same page, evolved. Dark, cinematic, still the same company and offer.',
- 'How the demo runs: an instant model keeps contact, the smart agent refines the request with useful questions, heavy tasks run in parallel. The conversation continues while the work runs.',
- 'Try it live at /demo: say the page you want, interrupt it mid-build, watch only the changed parts update. The page is rendered for the session only, nothing is published.',
- 'COMPASS understands intent. It keeps acting.'
+ 'Hi everyone. We have spent years learning how to talk to computers. Clicking. Typing. Learning interfaces. And now, with AI, we are still doing basically the same thing: prompting machines. But what if instead you could simply express what you want, and watch it become real? That is what we built. This is COMPASS.',
+ 'Play the film. Do not talk over it. Let it finish.',
+ 'That is the experience we wanted to create. Not another prompt box. An agent you can actually direct with your voice.',
+ 'Open the website. Everything you see here is the visual language of COMPASS. But the interesting part is what happens when we stop watching the concept and actually use it.',
+ 'Go to the demo. We needed a task where you could actually see intelligence working. We chose building a website. Not because COMPASS is just a website builder, but because it makes the interaction visible. Let us build one.',
+ 'Voice prompt one: Build me a premium website for an AI company. Make it minimal, dark and cinematic. Pause. Let the site build.',
+ 'Voice prompt two, while it is still working: Actually, make it warmer. Make the hero more ambitious, and add a pricing section.',
+ 'Only what changed changes. AI company, premium and minimal are kept. COMPASS keeps acting, no restart.',
+ 'The brief after the change: dark becomes warm, the hero becomes ambitious, pricing is added, everything else is kept.',
+ 'Vincent: the conversation continues while the work runs. An instant model keeps contact, the smart agent refines the request with useful questions, heavy tasks run in parallel.',
+ 'Vincent: voice through Boson Higgs realtime over a server-side bridge; reasoning by GLM-5.3 on Nebius into a structured brief; a change patches only the changed fields and rewrites only the sections that depend on them; the page renders live in a sandbox.',
+ 'And websites are only the beginning. What we really built is a different relationship between humans and AI. Today we directed a website. The same interaction can eventually direct software, research, workflows, creative work, anything an agent can act on. We believe the next interface is not another dashboard.',
+ 'COMPASS understands. COMPASS acts. Your intent becomes software. Thank you.'
 ];
 let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
 let media = {};
-const F = 1; // scene 0 is the film; the narrative below is indexed from scene 1
+const F = 0; // stage order: open, film, experience, website, demo, prompt 1, prompt 2, adapt, brief, runs, stack, beyond, close
 const LAST = scenes.length - 1;
+const FILM = scenes.indexOf($('#scene-film'));
+const CORRECTION = scenes.indexOf($('#scene-6'));
 const film = $('#film'); // YouTube iframe (enablejsapi); paused through postMessage when the scene changes
 const pauseFilm = () => film?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
-const sceneMedia = { 1: 'chaos', 2: 'speak' };
+const sceneMedia = { 0: 'chaos', 5: 'speak' };
 const orbPos = [
- [50, 50, .2, 0], [80, 52, .28, 0], [78, 44, .3, 0], [50, 30, .92, 1], [50, 29, .7, 1],
- [80, 48, .53, .9], [81, 45, .44, 1], [50, 28, .58, 1], [50, 77, .18, 1],
- [88, 18, .2, 0], [81, 50, .32, 0], [50, 50, .2, 0], [83, 25, .26, .75], [50, 27, .58, 1]
+ [80, 52, .28, 0], [50, 50, .2, 0], [50, 30, .92, 1], [50, 29, .62, 1],
+ [80, 48, .53, .9], [81, 45, .44, 1], [81, 45, .44, 1], [50, 28, .58, 1],
+ [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [50, 22, .4, .8], [50, 27, .58, 1]
 ];
 const mobileOrbPos = [
- [50, 50, .2, 0], [75, 35, .25, 0], [76, 40, .25, 0], [50, 31, 1, 1], [50, 29, .84, 1],
- [84, 24, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1], [50, 75, .2, 1],
- [86, 17, .18, 0], [81, 35, .25, 0], [50, 50, .2, 0], [84, 19, .26, .7], [50, 26, .65, 1]
+ [75, 35, .25, 0], [50, 50, .2, 0], [50, 31, 1, 1], [50, 27, .7, 1],
+ [84, 24, .3, .6], [84, 23, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1],
+ [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [50, 20, .45, .7], [50, 26, .65, 1]
 ];
 
 $('#contents').innerHTML = scenes.map((s, i) => `<a href="#${s.id}" data-scene="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${s.dataset.label}</a>`).join('');
@@ -64,8 +65,8 @@ function correct(announce = true) {
  $('.new-concern').hidden = false;
  $('#correct').textContent = 'Plan updated ✓';
  $('#correct').setAttribute('aria-pressed', 'true');
- $('#correction-note').textContent = 'KEPT · AI COMPANY, PREMIUM, EARLY ACCESS';
- if (announce) $('#announcement').textContent = 'Interrupted. Light theme is superseded. Dark theme with a cinematic hero is active. AI company, premium and early access are kept.';
+ $('#correction-note').textContent = 'KEPT · AI COMPANY, PREMIUM, MINIMAL';
+ if (announce) $('#announcement').textContent = 'Interrupted. Dark and cinematic are superseded. Warm, an ambitious hero and a pricing section are active. AI company, premium and minimal are kept.';
 }
 function resetCorrection() {
  corrected = false;
@@ -82,9 +83,9 @@ function setActive(index) {
  $('#scene-name').textContent = scenes[index].dataset.label;
  $('#note-content').textContent = notes[index];
  navLinks.forEach((a, i) => a.setAttribute('aria-current', String(i === index)));
- document.body.classList.toggle('light-active', index === 8 + F);
- if (index >= 6 + F) correct(false);
- if (index !== 0) pauseFilm();
+ document.body.classList.toggle('light-active', index === 8);
+ if (index > CORRECTION) correct(false);
+ if (index !== FILM) pauseFilm();
  manageMedia();
 }
 function render() {
@@ -96,7 +97,7 @@ function render() {
  const q = p - F; // narrative position: 0 = first narrative scene
  const opacityAt = (index) => clamp(1 - Math.abs(q - index));
  for (const [key, el] of Object.entries(worlds)) {
-  const i = key === 'chaos' ? 0 : 1;
+  const i = Number(Object.entries(sceneMedia).find(([, v]) => v === key)?.[0]);
   el.style.opacity = opacityAt(i);
   el.style.clipPath = 'inset(0)';
  }
@@ -110,7 +111,7 @@ function render() {
  orb.style.top = `${mix(a[1], b[1], t)}%`;
  orb.style.transform = `translate(-50%,-50%) scale(${mix(a[2], b[2], t)})`;
  orb.style.opacity = mix(a[3], b[3], t);
- $('.orb-wave').style.opacity = clamp(1 - Math.abs(q - 3));
+ $('.orb-wave').style.opacity = clamp(1 - Math.abs(q - 2));
  $('.world-horizon').style.opacity = clamp(q - 11);
  scenes.forEach((scene, i) => {
   const distance = i - position;
@@ -167,13 +168,13 @@ function goTo(index, animate = true) {
 }
 function queueAdvance() {
  const current = Math.round(scrollPosition());
- const delay = current === 5 + F ? 7500 : current === 8 + F ? 9500 : 5000;
+  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : 5000;
  // On the film scene, autoplay does not cut the film: the presenter scrolls on when it ends.
- if (current === 0) { stopAuto(); return; }
+ if (current === FILM) { stopAuto(); return; }
  timer = window.setTimeout(() => {
   if (!playing) return;
   if (current === LAST) { stopAuto(); return; }
-  if (current === 5 + F) correct(false);
+  if (current === CORRECTION) correct(false);
   goTo(current + 1);
   timer = window.setTimeout(queueAdvance, 250);
  }, delay);
