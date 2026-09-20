@@ -74,3 +74,15 @@
 .scene-beyond .support{margin-top:26px}
 @media(max-width:700px){.stack-3{grid-template-columns:1fr;gap:24px;max-width:none}.stack-3 strong{font-size:19px}}
 .scene-correction .correction-state{flex-wrap:wrap;row-gap:12px}
+.scene-diagram{padding-top:84px;padding-bottom:72px}
+.scene-diagram .eyebrow{margin-bottom:14px}
+
+/* Presentation: film embed and the architecture diagram, both fitted to the viewport. */
+.yt{position:relative;aspect-ratio:16/9;background:#000;border-radius:18px;border:1px solid #d7f2ff26;box-shadow:0 50px 140px -50px #000,0 0 80px #8bc8ee14;overflow:hidden}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.scene-diagram{justify-content:center;padding-top:84px;padding-bottom:72px}
+.scene-diagram .scene-copy{max-width:min(1400px,calc((100vh - 240px) * 2560 / 1600));margin:0 auto}
+.scene-diagram .eyebrow{margin-bottom:14px}
+.diagram{margin:0;border-radius:16px;overflow:hidden;border:1px solid #d7f2ff1f;box-shadow:0 50px 140px -50px #000;background:#0b1522}
+.diagram img{display:block;width:100%;height:auto}
+@media(max-width:700px){.yt{border-radius:12px}.scene-diagram{padding:92px 4vw 100px}.diagram{border-radius:10px}}
