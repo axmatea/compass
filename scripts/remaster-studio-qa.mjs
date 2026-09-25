@@ -9,7 +9,7 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 const report = { at: new Date().toISOString(), checks: [], errors: [] };
 const ready = async page => {
-  await page.goto(`${base}/?clock=manual`);
+  await page.goto(`${base}/demo/remaster?clock=manual`);
   await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => document.querySelector('.studio-room-image')?.naturalWidth > 0);
@@ -68,7 +68,7 @@ try {
   }
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.route('**/remaster/studio/room-v1.webp', route => route.abort());
-  await page.goto(`${base}/?clock=manual`);
+  await page.goto(`${base}/demo/remaster?clock=manual`);
   await page.locator('.studio-roster-fallback').waitFor();
   assert.equal(await page.locator('.studio-roster-fallback .rm-person').count(), 6);
   await page.locator('.studio-roster-fallback .rm-person').filter({ hasText: 'Sarah' }).click();
@@ -91,7 +91,7 @@ try {
     if (path.endsWith('/events')) return route.fulfill({ contentType: 'text/event-stream', body: ': browser QA only\n\n' });
     return route.fulfill({ json: { snapshot } });
   });
-  await live.goto(`${base}/app`);
+  await live.goto(`${base}/demo/remaster/app`);
   await live.locator('#start-btn').click();
   await live.locator('.studio-roster-fallback').waitFor();
   assert.match(await live.locator('.studio-roster-fallback').innerText(), /different team/);
@@ -111,7 +111,7 @@ try {
     }
     return route.fulfill({ json: { snapshot } });
   });
-  await transfer.goto(`${base}/app`);
+  await transfer.goto(`${base}/demo/remaster/app`);
   await transfer.locator('#start-btn').click();
   await transfer.locator('.studio-room').waitFor();
   assert.equal(await transfer.locator('.studio-transfer-lines path').count(), 0);

@@ -1,7 +1,7 @@
 {
-  "name": "COMPASS REMaster",
+  "name": "COMPASS Workspace",
   "short_name": "COMPASS",
-  "description": "Road to Demo Day. An interactive memory simulation.",
+  "description": "Your team's context, tasks and decisions at one shared table.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f5f0",

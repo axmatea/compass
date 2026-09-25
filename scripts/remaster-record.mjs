@@ -22,7 +22,7 @@ const resume=()=>page.getByRole('button',{name:/^Resume(?: quarter)?$/}).click()
 const memory=()=>page.getByRole('button',{name:/Memory X-ray/i}).first().click();
 let finalSnapshot;
 try{
-  await page.goto(base);
+  await page.goto(`${base}/demo/remaster`);
   await page.locator('#start-btn').waitFor();
   await page.evaluate(()=>document.fonts.ready);
   mark('Actual UI recording. Scripted simulation, synthetic team, deliberate memory fault.');

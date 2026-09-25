@@ -1,5 +1,25 @@
 Original prompt: Implement COMPASS REMaster as one interactive game: launch an AI-managed quarter, introduce changes, inspect memory and recovery. Keep the existing warm Manrope/cobalt design; Vincent owns the runtime. Preserve Acquisition separately, no paid calls or production deployment before release gates.
 
+## Human workspace implementation, 2026-09-25
+
+- User approved a shared workspace for humans, not contact CRM or coding agents.
+- Branch codex/human-workspace from e291648; backend and frontend have disjoint
+  worker ownership. Main owns integration, auth redirects, QA and release.
+- React/SVG scene replaces static artwork on the main route. Old simulation is
+  retained at /demo/remaster; previous acquisition routes/data remain intact.
+- Railway access verified, but no production database/auth/workspace runtime.
+  Awaiting resource approval or an existing DB. No paid service provisioned.
+- Final regression run: 273 tests passed, zero skipped, with local test PG.
+- Workspace suite: 29 passed; legacy REMaster: 66 passed (overlapping suites).
+- Team signup keeps a one-use membership token through safe fixed login routes.
+- Completed worker integration, 390/768/1440 browser QA, two-account live local
+  QA with actual process restart, revoked access and sign-out; no JS errors.
+- Small upstream facing helper adapted at pinned c238a30 with full MIT notice;
+  no coding-agent hooks, scanners, random productivity or presence animations.
+- Release instructions and 60-second stage script: docs/WORKSPACE_RELEASE.md.
+- Commit and push a draft release branch only. Production remains gated on a
+  persistent database and secure auth. AI stays explicitly BLOCKED.
+
 ## 2026-09-25
 
 - Created branch codex/remaster-experience from 5264a9e.

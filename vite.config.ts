@@ -8,14 +8,14 @@ export default defineConfig({
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         if (req.url && /^\/(acquisition(?:\/app)?|login)\/?(?:\?|$)/.test(req.url)) req.url = "/acquisition.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
-        else if (req.url && /^\/(app|demo|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
+        else if (req.url && /^\/(app|demo(?:\/remaster(?:\/app)?)?|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = "/index.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
         next();
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use((req, _res, next) => {
         if (req.url && /^\/(acquisition(?:\/app)?|login)\/?(?:\?|$)/.test(req.url)) req.url = "/acquisition.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
-        else if (req.url && /^\/(app|demo|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
+        else if (req.url && /^\/(app|demo(?:\/remaster(?:\/app)?)?|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = "/index.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
         next();
       });
     },

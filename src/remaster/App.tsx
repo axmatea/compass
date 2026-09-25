@@ -31,7 +31,7 @@ declare global {
   }
 }
 
-const live = /^\/app(?:\/|$)/.test(window.location.pathname);
+const live = /^\/demo\/remaster\/app(?:\/|$)/.test(window.location.pathname);
 const phaseLabels: Record<Snapshot["phase"], string> = {
   planning: "Planning the work",
   working: "Work in motion",
@@ -441,7 +441,7 @@ export default function App() {
                 : "LIVE / NOT CONNECTED"
               : "SCRIPTED SIMULATION"}
           </span>
-          <a className="rm-mode-link" href={live ? "/" : "/app"}>
+          <a className="rm-mode-link" href={live ? "/demo/remaster" : "/demo/remaster/app"}>
             {live ? "Public fixture" : "Live mode"}
             <Icon name="arrow" />
           </a>
@@ -624,7 +624,7 @@ export default function App() {
               results.
             </small>
             {live && (
-              <a href="/login?returnTo=/app" className="rm-text-button">
+              <a href="/login?returnTo=/demo/remaster/app" className="rm-text-button">
                 Invited account sign-in
                 <Icon name="arrow" />
               </a>

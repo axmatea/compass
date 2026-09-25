@@ -11,7 +11,7 @@ const read=page=>page.evaluate(()=>JSON.parse(window.render_game_to_text()).snap
 const step=async(page,ms)=>{await page.evaluate(ms=>window.advanceTime(ms),ms);await page.waitForTimeout(80);};
 const overflow=page=>page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
 const open=async page=>{
-  await page.goto(`${base}/?clock=manual`);
+  await page.goto(`${base}/demo/remaster?clock=manual`);
   await page.waitForFunction(()=>typeof window.render_game_to_text==='function'&&JSON.parse(window.render_game_to_text()).snapshot);
   await page.evaluate(()=>document.fonts.ready);
 };
@@ -94,10 +94,10 @@ try{
   assert(s.tasks.some(t=>t.status!=='done'));
   assert(s.facts.some(f=>f.id==='fact-dependency-delay'));
   report.checks.push({dependencyDelay:'Missing dependency blocks downstream work and remains in evidence'});
-  await page.goto(`${base}/presentation`);await page.locator('#start-btn').waitFor();
+  await page.goto(`${base}/presentation`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
   assert.equal(new URL(page.url()).searchParams.get('stage'),'1');
   await page.keyboard.press('Tab');assert(await page.evaluate(()=>document.activeElement!==document.body));
-  await page.goto(`${base}/app`);await page.waitForTimeout(700);
+  await page.goto(`${base}/demo/remaster/app`);await page.waitForTimeout(700);
   const status=await (await page.request.get(`${base}/api/remaster/status`)).json();
   assert.equal(status.status,'BLOCKED');
   const liveStart=page.locator('#start-btn');if(await liveStart.count()&&await liveStart.isEnabled())await liveStart.click();
@@ -107,7 +107,7 @@ try{
   await page.screenshot({path:resolve(out,'live-blocked.png'),fullPage:true});
   await page.goto(`${base}/acquisition`);await page.locator('.page-heading h1').waitFor();
   await page.goto(`${base}/acquisition/app`);await page.getByRole('button',{name:'Open workspace',exact:true}).waitFor();
-  report.checks.push({legacyRoutes:'Game aliases preserved; acquisition demo and invited login retained',live:'BLOCKED without fixture fallback',keyboardFocus:true});
+  report.checks.push({legacyRoutes:'Presentation redirects to human workspace; REMaster and acquisition retained',live:'BLOCKED without fixture fallback',keyboardFocus:true});
   await page.close();
 }catch(e){report.errors.push(e.message);throw e;}
 finally{await browser.close();await writeFile(resolve(out,'browser-report.json'),JSON.stringify(report,null,2));}

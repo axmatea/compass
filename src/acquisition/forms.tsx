@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "./api";
+import { afterSignupLocation } from "./login-return";
 import { localDateTime, occurrenceTime } from "./datetime";
 import type {
   AnswerInput,
@@ -481,9 +482,7 @@ export function AuthForm({
             if (!result.ok) throw new Error("Invitation was not accepted.");
             setAccepted(true);
             setKind("sign-in");
-            const returnToRemaster = window.location.pathname === "/login" &&
-              new URLSearchParams(window.location.search).get("returnTo") === "/app";
-            window.history.replaceState(null, "", returnToRemaster ? "/login?returnTo=/app" : "/acquisition/app");
+            window.history.replaceState(null, "", afterSignupLocation());
           } else {
             await api("/api/auth/sign-in/email", { email, password });
             await onAuthenticated();

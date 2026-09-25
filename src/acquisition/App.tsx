@@ -1,6 +1,7 @@
 import { Component, startTransition, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { api, ApiError, errorMessage } from "./api";
+import { workspaceReturn } from "./login-return";
 import {
   addDemoExperiment,
   addDemoLead,
@@ -202,8 +203,9 @@ export default function App() {
         signal,
       );
       setSession(account?.user ? account : null);
-      if (account?.user && window.location.pathname === "/login" && new URLSearchParams(window.location.search).get("returnTo") === "/app") {
-        window.location.assign("/app");
+      const destination = workspaceReturn();
+      if (account?.user && destination) {
+        window.location.assign(destination);
         return;
       }
       if (account?.user)
@@ -664,8 +666,9 @@ export default function App() {
           ) : isLivePath && !session ? (
             <AuthForm
               onAuthenticated={() => {
-                if (window.location.pathname === "/login" && new URLSearchParams(window.location.search).get("returnTo") === "/app") {
-                  window.location.assign("/app");
+                const destination = workspaceReturn();
+                if (destination) {
+                  window.location.assign(destination);
                   return Promise.resolve();
                 }
                 return loadWorkspace();

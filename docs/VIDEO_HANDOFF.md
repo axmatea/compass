@@ -1,4 +1,13 @@
-# REMaster video handoff
+# COMPASS video handoff
+
+## Current human-workspace release
+
+The primary product has changed to a shared human workspace. No existing promo
+or REMaster walkthrough demonstrates this new product. Use the stage text in
+WORKSPACE_RELEASE.md and the current verified UI; do not relabel an old video.
+No new paid media generation or video render is included in this release.
+
+The notes below are retained for the separate `/demo/remaster` example only.
 
 ## Studio redesign note
 

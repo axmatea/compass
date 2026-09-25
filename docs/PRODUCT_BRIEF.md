@@ -1,4 +1,20 @@
-# COMPASS REMaster
+# COMPASS: human team workspace
+
+Current direction, 2026-09-25: a small team brings project context, updates shared
+tasks and keeps original sources beside decisions. The owner manages membership
+and approves agent proposals; participants add materials and update tasks.
+
+The new entrypoint is the React/SVG team table. Public `/` is a clearly labelled
+fictional example; `/app` requires authentication and persistent PostgreSQL.
+Manual collaboration is separate from AI. A human-workspace runtime is not yet
+verified; no self-learning or lossless-compression claim is supported.
+
+Current implementation and release gates: root README, WORKSPACE_API.md and
+WORKSPACE_RELEASE.md. No subscription price carries over to this product.
+
+## Previous REMaster brief (compatible demo only)
+
+The following describes `/demo/remaster`, not the new main product.
 
 Updated 2026-09-25. Branch: codex/remaster-experience. Production remains unchanged
 until runtime, authorization, database and spending gates pass.
