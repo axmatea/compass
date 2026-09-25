@@ -1,5 +1,16 @@
 # REMaster video handoff
 
+## Studio redesign note
+
+The GPT Image studio redesign is implemented locally. The existing 180-second
+REMaster MP4 below predates it and shows the old board. No replacement video was
+rendered in the design-only turn. New UI captures are in
+`delivery/remaster/studio-qa/`; generated assets and prompts are documented in
+`docs/design/remaster-studio/manifest.json`. Before recording again, use the
+current UI and recheck the capture script's selectors and framing.
+
+## Existing game recording
+
 The active release is now COMPASS REMaster. Record the real game using
 `npm run record:remaster`, not the former acquisition tour. Deliver the raw
 Playwright source, deterministic action script, timecoded manifest and

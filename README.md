@@ -21,6 +21,24 @@ disable it before starting to see the fact-retention path. Pause, inspect a
 teammate or open Memory X-ray without leaving the board. Changing the deadline or
 a dependency can cause the mission to miss its target. There is no guaranteed win.
 
+## Studio design
+
+The primary game is now a GPT Image-designed miniature studio, implemented in
+React, not a static UI screenshot. Click any of the six teammate labels to inspect
+their work. Task states, the sprint path, clock, memory checkpoints and decisions
+come from the existing transport. The illustrated characters themselves do not
+animate or establish facts. A deadline change is not drawn as an owner transfer.
+
+Desktop keeps the entire studio in view with a scrollable context rail; mobile
+uses the same room and 44px+ touch controls above a linear task/evidence list.
+Reduced motion retains all meaning. A missing image or different runtime roster
+uses accessible team controls instead of the wrong illustrated cast.
+
+Original concept, clean plate, exact prompts and asset provenance are in
+[the studio manifest](docs/design/remaster-studio/manifest.json). The only served
+artwork is a 281 KB WebP. Generation used built-in GPT Image, not Higgsfield;
+no Higgsfield credits, purchases, model runtime calls or deployment were made.
+
 ## What is real
 
 - React/Vite game UI, deterministic local simulation and interactive controls.
@@ -63,6 +81,7 @@ npm run build
 npm test
 npm run test:remaster
 npm run qa:remaster
+npm run qa:remaster-studio
 npm run record:remaster
 ```
 

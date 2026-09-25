@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { Decision, Fact, Person, Preset, Snapshot, Task } from "./types";
+import { STUDIO_IMAGE, STUDIO_PEOPLE } from './studio-art';
 
 export type IconName =
   | "mark"
@@ -111,6 +112,14 @@ export function Portrait({
   small?: boolean;
 }) {
   const variant = index % 6;
+  const studio = STUDIO_PEOPLE[person.id];
+  if (studio && person.name.toLowerCase() === person.id) {
+    return (
+      <span className={`rm-portrait studio-portrait ${small ? 'small' : ''}`} aria-hidden="true">
+        <img src={STUDIO_IMAGE} alt="" style={{ transform: `translate(-${studio.x}%, -${studio.faceY}%)` }} />
+      </span>
+    );
+  }
   return (
     <span
       className={`rm-portrait ${small ? "small" : ""}`}

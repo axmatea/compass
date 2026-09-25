@@ -102,8 +102,8 @@ export class LiveTransport implements Transport {
   constructor(deps: LiveTransportDependencies = {}) {
     this.fetchImpl = deps.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.sourceFactory = deps.eventSourceFactory ?? ((url, options) => new EventSource(url, options));
-    this.schedule = deps.setTimeoutImpl ?? globalThis.setTimeout;
-    this.cancel = deps.clearTimeoutImpl ?? globalThis.clearTimeout;
+    this.schedule = deps.setTimeoutImpl ?? globalThis.setTimeout.bind(globalThis);
+    this.cancel = deps.clearTimeoutImpl ?? globalThis.clearTimeout.bind(globalThis);
     this.reconnectDelay = Math.max(1, Math.min(8000, deps.reconnectDelayMs ?? 500));
     this.requestTimeout = Math.max(25, Math.min(30_000, deps.requestTimeoutMs ?? 15_000));
     this.maxReconnectAttempts = Math.max(1, Math.min(10, deps.maxReconnectAttempts ?? 5));

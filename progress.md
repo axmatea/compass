@@ -42,3 +42,27 @@ Original prompt: Implement COMPASS REMaster as one interactive game: launch an A
   reflected in the first-cut video; behavior and disclosures are unchanged.
 - BLOCKED: Vincent runtime URL/token/compatibility, live tenant ownership and
   resource authorization. Do not enable live, provision resources or merge main.
+
+### GPT Image studio redesign
+
+- User requested GPT Image design and implementation. Built-in GPT Image used
+  for a design concept and text-free studio plate; no Higgsfield credits spent.
+- Working in codex/remaster-gpt-studio from 1bc1c3d. Production unchanged.
+- New illustrated game scene uses real DOM hotspots, snapshot-driven task states,
+  transfer paths only on reported reassignments, and a compact evidence rail.
+- Fixture/live transports and backend untouched. Different runtime rosters or
+  failed artwork fall back to accessible roster controls, not fabricated state.
+- Complete: build and 66 fixture/live/bridge tests pass. Existing browser QA
+  passes 390/768/1440 with both memory paths, interventions and no public API calls.
+- Studio-specific browser QA passes all six 44px+ hotspots, keyboard focus return,
+  normal motion, paused recovery, missing artwork and an explicitly mocked live
+  roster/owner transfer. At 1280x720 the entire studio fits above the controls.
+- Found and fixed pre-existing browser Illegal invocation in LiveTransport:
+  default setTimeout/clearTimeout now bind globalThis. Verified via browser-only
+  mocked API; no actual Vincent runtime or provider access was exercised.
+- Default day-32 recovery moves Sarah's work earlier, not to another person.
+  The UI correctly draws no owner-transfer path for that date-only change.
+- Built-in GPT Image concept and clean plate saved with prompts/SHA256 manifest.
+  Web asset: 1536x1024, 281300-byte WebP. No text baked into interactive controls.
+- Old 180-second video predates this redesign; handoff explicitly labels it old.
+- Live remains BLOCKED; no spending, external publication or deployment.

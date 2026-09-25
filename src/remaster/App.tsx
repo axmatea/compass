@@ -12,18 +12,17 @@ import type {
 } from "./types";
 import {
   ChangeSheet,
-  DecisionFeed,
   DetailDrawer,
   Icon,
   MemoryXray,
   Outcome,
   Overlay,
   SprintPath,
-  TaskBoard,
-  TeamRow,
 } from "./components";
 import type { AssignmentChange, DrawerTarget } from "./components";
 import "./styles.css";
+import { StudioExperience } from './Studio';
+import './studio.css';
 
 declare global {
   interface Window {
@@ -233,11 +232,9 @@ export default function App() {
           ),
         ),
         visibleDecisions: snapshot
-          ? [...snapshot.decisions].sort((a, b) => b.day - a.day).slice(0, 3)
+          ? [...snapshot.decisions].reverse().sort((a, b) => b.day - a.day).slice(0, 1)
           : [],
-        visibleSignals: snapshot
-          ? [...snapshot.feed].sort((a, b) => b.day - a.day).slice(0, 2)
-          : [],
+        visibleSignals: [],
         metrics: snapshot?.metrics ?? null,
         outcome: snapshot?.outcome ?? null,
         memory:
@@ -413,7 +410,7 @@ export default function App() {
 
   return (
     <div
-      className={`rm-game ${snapshot ? `phase-${snapshot.phase}` : ""} ${overlay === "memory" ? "xray-open" : ""}`}
+      className={`rm-game rm-studio-game ${snapshot ? `phase-${snapshot.phase}` : ""} ${overlay === "memory" ? "xray-open" : ""}`}
       ref={stage}
     >
       <a className="rm-skip" href="#project-board">
@@ -463,13 +460,13 @@ export default function App() {
         <section className="rm-game-heading">
           <div>
             <p className="rm-kicker">
-              SIX PEOPLE. SIX SPRINTS. ONE CHANGING PLAN.
+              A WORKING MEMORY GAME / COMPASS
             </p>
             <h1>
-              Can your team make <span>Demo Day?</span>
+              Build a team <span>that remembers.</span>
             </h1>
             <p className="rm-game-subtitle">
-              Start the quarter. Change the plan. See what the team remembers.
+              Six teammates. Sixty working days. Can your team make Demo Day?
             </p>
           </div>
           <div
@@ -551,22 +548,11 @@ export default function App() {
                 </button>
               )}
             </div>
-            <TeamRow
-              snapshot={snapshot}
-              onPerson={(id) => setDrawer({ kind: "person", id })}
-            />
-            <div className="rm-workspace">
-              <TaskBoard
-                snapshot={snapshot}
-                sprint={sprint}
-                changes={changes}
-                onTask={(id) => setDrawer({ kind: "task", id })}
-              />
-              <DecisionFeed
-                snapshot={snapshot}
-                onDecision={(id) => setDrawer({ kind: "decision", id })}
-              />
-            </div>
+            <StudioExperience snapshot={snapshot} sprint={sprint} changes={changes}
+              onPerson={(id) => setDrawer({ kind: 'person', id })}
+              onTask={(id) => setDrawer({ kind: 'task', id })}
+              onDecision={(id) => setDrawer({ kind: 'decision', id })}
+              onMemory={() => setOverlay('memory')} />
             <section
               className="rm-metrics-strip"
               aria-label="Reported run metrics"
@@ -687,7 +673,7 @@ export default function App() {
             </label>
           )}
         </div>
-        <div className="rm-control-buttons">
+        <div className={`rm-control-buttons ${live ? 'studio-live-controls' : ''}`}>
           <button
             className="rm-icon-button rm-restart"
             type="button"
