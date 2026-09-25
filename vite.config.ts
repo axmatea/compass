@@ -26,6 +26,7 @@ export default defineConfig({
         story: fileURLToPath(new URL("./story.html", import.meta.url)),
         presentation: fileURLToPath(new URL("./present.html", import.meta.url)),
         live: fileURLToPath(new URL("./live.html", import.meta.url)),
+        horizon: fileURLToPath(new URL("./horizon.html", import.meta.url)),
       },
     },
   },
