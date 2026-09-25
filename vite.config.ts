@@ -7,13 +7,15 @@ export default defineConfig({
     name: "compass-demo-route",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/(app|demo|presentation|present|story|login)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
+        if (req.url && /^\/(acquisition(?:\/app)?|login)\/?(?:\?|$)/.test(req.url)) req.url = "/acquisition.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+        else if (req.url && /^\/(app|demo|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
         next();
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/(app|demo|presentation|present|story|login)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
+        if (req.url && /^\/(acquisition(?:\/app)?|login)\/?(?:\?|$)/.test(req.url)) req.url = "/acquisition.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+        else if (req.url && /^\/(app|demo|presentation|present|story)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
         next();
       });
     },
@@ -24,6 +26,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         website: fileURLToPath(new URL("./index.html", import.meta.url)),
+        acquisition: fileURLToPath(new URL("./acquisition.html", import.meta.url)),
         story: fileURLToPath(new URL("./story.html", import.meta.url)),
         presentation: fileURLToPath(new URL("./present.html", import.meta.url)),
         live: fileURLToPath(new URL("./live.html", import.meta.url)),

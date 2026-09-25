@@ -12,7 +12,7 @@ try{
   const page=await context.newPage();const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   const external=[];page.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:'))external.push(r.url());});
-  await page.goto(base);await page.locator('.page-heading h1').waitFor();await page.evaluate(()=>document.fonts.ready);
+  await page.goto(`${base}/acquisition`);await page.locator('.page-heading h1').waitFor();await page.evaluate(()=>document.fonts.ready);
   for(const tab of ['Mission','Experiments','Pipeline','Memory']){
    const nav=page.getByRole('navigation',{name:width<1100?'Mobile workspace':'Workspace',exact:true});
    // Actual visible navigation is authoritative at each breakpoint.
@@ -23,7 +23,7 @@ try{
   }
   assert.equal(errors.length,0,errors.join('\n'));assert.equal(external.length,0,'Unexpected third-party browser request');
   report.checks.push({width,tabs:4,horizontalOverflow:false,pageErrors:0,thirdPartyRequests:0});
-  await page.goto(`${base}/?tour=1`);
+  await page.goto(`${base}/acquisition?tour=1`);
   const tour=page.getByRole('region',{name:'Guided demo tour'});
   await tour.waitFor();
   for(const label of ['Explore experiments','Meet the pipeline','Jump 2 days: receive answer','Replay the same event','Change the business rules','Check the evidence','Finish & explore']){
@@ -34,13 +34,13 @@ try{
   await context.close();
  }
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
- await page.goto(`${base}/presentation`);await page.getByRole('region',{name:'Guided demo tour'}).waitFor();
+ await page.goto(`${base}/acquisition?tour=1`);await page.getByRole('region',{name:'Guided demo tour'}).waitFor();
  assert(new URL(page.url()).searchParams.get('tour')==='1');
  await page.getByRole('button',{name:'Exit tour',exact:true}).click();
  await page.keyboard.press('Tab');assert(await page.evaluate(()=>document.activeElement!==document.body));
- await page.goto(`${base}/app`);await page.getByRole('button',{name:'Open workspace',exact:true}).waitFor();
+ await page.goto(`${base}/acquisition/app`);await page.getByRole('button',{name:'Open workspace',exact:true}).waitFor();
  assert.equal(await page.getByText('Mira Chen',{exact:true}).count(),0);
- report.checks.push({privateWorkspace:'Unauthenticated form only; no fixture substitution',legacyPresentation:'redirects to same-product tour',keyboard:'focus available'});
+ report.checks.push({privateWorkspace:'Unauthenticated form only; no fixture substitution',preservedAcquisition:'same-product tour retained on compatibility route',keyboard:'focus available'});
  await page.close();
 }catch(e){report.errors.push(e.message);throw e;}
 finally{await browser.close();await writeFile(resolve(out,'browser-report.json'),JSON.stringify(report,null,2));}

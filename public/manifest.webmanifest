@@ -1,7 +1,7 @@
 {
-  "name": "COMPASS Acquisition Workspace",
+  "name": "COMPASS REMaster",
   "short_name": "COMPASS",
-  "description": "A little more direction for your next client.",
+  "description": "Road to Demo Day. An interactive memory simulation.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f5f0",
