@@ -14,7 +14,7 @@ try{
  invite=await createInvite({pool,email});
  const context=await browser.newContext({viewport:{width:1440,height:1000},permissions:[]});const page=await context.newPage();
  page.on('pageerror',e=>report.errors.push(e.message));
- await page.goto(`${base}/app?token=${invite.token}`);
+ await page.goto(`${base}/acquisition/app?token=${invite.token}`);
  await page.getByLabel('Your name',{exact:true}).fill('Synthetic QA Owner');
  await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);
  await page.getByRole('button',{name:'Accept invitation',exact:true}).click();

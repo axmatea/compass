@@ -107,7 +107,7 @@ const legacyHashes = new Set([
   "#how-it-works",
   "#presentation",
 ]);
-const isLivePath = /^\/(?:app|login)(?:\/|$)/.test(window.location.pathname);
+const isLivePath = /^\/(?:acquisition\/app|login)(?:\/|$)/.test(window.location.pathname);
 type Dialog =
   | "settings"
   | "experiment"
@@ -202,6 +202,10 @@ export default function App() {
         signal,
       );
       setSession(account?.user ? account : null);
+      if (account?.user && window.location.pathname === "/login" && new URLSearchParams(window.location.search).get("returnTo") === "/app") {
+        window.location.assign("/app");
+        return;
+      }
       if (account?.user)
         setLiveState(
           assertState(
@@ -576,7 +580,7 @@ export default function App() {
               )
             ) : (
               <>
-                <a className="text-button signin-link" href="/app">
+                <a className="text-button signin-link" href="/acquisition/app">
                   Sign in
                 </a>
                 <button
@@ -659,7 +663,13 @@ export default function App() {
             </div>
           ) : isLivePath && !session ? (
             <AuthForm
-              onAuthenticated={() => loadWorkspace()}
+              onAuthenticated={() => {
+                if (window.location.pathname === "/login" && new URLSearchParams(window.location.search).get("returnTo") === "/app") {
+                  window.location.assign("/app");
+                  return Promise.resolve();
+                }
+                return loadWorkspace();
+              }}
               onEarlyAccess={() => setDialog("access")}
             />
           ) : (

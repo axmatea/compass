@@ -1,54 +1,52 @@
-# COMPASS Acquisition product brief
+# COMPASS REMaster
 
-Updated September 25, 2026. Implementation branch: codex/acquisition-engine.
-This brief describes the release candidate, not an assertion of production deployment.
+Updated 2026-09-25. Branch: codex/remaster-experience. Production remains unchanged
+until runtime, authorization, database and spending gates pass.
 
-## Positioning
-COMPASS connects acquisition hypotheses to the quality of inbound conversations,
-remembers why decisions changed, and revises the next test when delayed evidence
-arrives. First workflow: demand for AI Media Global's AI implementation service.
-Audience and willingness to pay remain hypotheses, not validated customer results.
+## One problem, one playable scenario
 
-**Promise:** Keep the next decision connected to what actually happened.
+A team plan can fail because an old constraint disappeared from working memory.
+REMaster explores checking that loss before a future decision becomes an action.
+Our first scenario is a synthetic six-person startup with 12 weeks (60 working
+days, six sprints) to reach Demo Day. This is not a validated customer outcome.
 
-## Concrete problem
-A form conversion can look successful before budget, fit, authority or timeline
-is known. Later answers and changed rules must update qualification without
-double-counting leads, erasing evidence or claiming an experiment has won.
+The user starts the quarter, introduces a change, and watches the manager adjust
+its plan. Assignments, memory operations, Shadow comparisons and evidence remain
+on one interactive board. Game progress is completed work, not an invented score.
 
-## Release candidate behavior
-- Invite-only email/password accounts with server-derived workspace identity.
-- PostgreSQL projects, hypotheses, leads, evidence, versioned rules and decisions.
-- Event deduplication and per-field time ordering.
-- Durable provider jobs with checkpoint recovery and uncertain-outcome blocking.
-- Nimble, Liquid and Tinybird adapters with strict schemas and redacted receipts.
-- Human review before extracted fields become facts; deterministic qualification.
-- Public synthetic demo and same-product guided tour.
-- Early-access request persistence. $299/month proposed price; no payment flow.
+## Experience
 
-## Not yet established
-Production database availability, sponsor credentials, actual provider conformance,
-live paid calls, production rollout, customer adoption and measurable ROI are
-not established by code or mock tests. Consult the current verification report.
-The first-cut UI is text-first; voice transport remains but microphone UI is not
-claimed connected. No automatic ads, outbound sends, CRM or Meta writes.
+Warm paper, graphite, cobalt, local Manrope. No initial orb, marketing scroll,
+four-tab acquisition dashboard, separate slides, forms-first setup or pricing.
+Start/Pause/Resume remains visible. Introduce a change opens short scenario cards.
+Team, task and memory details open over the same board, not another application.
 
-## Visual and narrative direction
-Warm light surfaces, graphite, cobalt, locally bundled Manrope. Four utility
-screens: Mission / Experiments / Pipeline / Memory. Original typographic creative
-cards, meaningful state transitions, reduced motion. No girl, orb, hero intro or
-separate slide deck. Legacy presentation paths enter the guided tour.
+The public Memory stress test deliberately archives Sarah's future availability
+and scripts a Shadow recovery. The normal scenario retains the fact and prevents
+the assignment without a claimed restore. Deadline/dependency changes affect the
+outcome; a missed launch is possible.
 
-The tour follows synthetic Mira: missing budget -> delayed $6,500 answer ->
-qualified against $5,000 -> duplicate ignored -> threshold becomes $8,000 ->
-qualification changes while the evidence is retained. Four leads do not prove a
-winning campaign. Accelerated time and synthetic data remain visible.
+## Truth and ownership
 
-## Ownership and sources
-One integrator controls main and Railway. Workers do not independently deploy.
-Repository: https://github.com/axmatea/compass
-Existing production domain: https://mycompass.world
-Contract: ACQUISITION_CONTRACT.md. Script: ACQUISITION_PITCH.md.
-Release gates: ACQUISITION_RELEASE.md. Provider sources: ACQUISITION_PROVIDERS.md.
-No current film should imply the previous voice-thinking-partner or site-builder
-product is the new acquisition workflow.
+Vincent owns the real agent runtime. This repo provides the game UI, deterministic
+fixtures, client transport and authenticated server bridge, not a second agent
+implementation disguised as Vincent's work.
+
+Public `/` is Scripted simulation: no model or sponsor calls. `/app` is the same
+experience for a configured runtime, labelled Live AI / simulated team. Missing
+runtime or session blocks it visibly. No silent fallback, paid retry, real-world
+team action, email, ad spend or payment collection. The former $299 acquisition
+hypothesis is not assigned to this different product.
+
+No claim that all agents forget, nobody else has sleep-time memory, context stays
+flat, cache hits are guaranteed, or a team ran for 90 real days. Token costs,
+benchmarks and provider success must come from runtime evidence, not animation.
+Frontend fixtures do not prove production persistence or model self-correction.
+
+## Integration
+
+See REMASTER_CONTRACT.md and src/remaster/types.ts. Authoritative snapshots and
+ordered SSE events drive the UI. Vincent sends decisions, evidence IDs, memory
+operations, normalized checks and receipts. Unknown metrics stay unknown. Live
+network failure never becomes a fabricated successful operation. Deployment and
+real sponsor receipts are separate gates.

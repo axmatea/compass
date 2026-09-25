@@ -1,94 +1,93 @@
-# COMPASS Acquisition
+# COMPASS / REMaster
 
-Keep the next acquisition decision connected to what actually happened.
+**Can your team make Demo Day?** Start an AI-managed quarter, introduce a change,
+and see why an old fact can change the next decision.
 
-An invite-only workspace for service businesses linking experiment hypotheses,
-inbound lead qualification, delayed answers and the next test. First scenario:
-AI Media Global's AI implementation service. Not an ad-spending autopilot.
+One interactive board. Six simulated teammates. Twelve weeks / sixty working
+days. A visible difference between forgetting a fact and checking that decision.
 
-## This release
+## Run it
 
-- `/`: interactive synthetic DEMO. Mission, Experiments, Pipeline and Memory.
-- `/app`: private workspace, Better Auth sessions, PostgreSQL tenant isolation.
-- `/?tour=1`: guided tour of the same product. Old presentation routes redirect.
-- Versioned rules, manual experiments/leads, per-field evidence clocks, event
-  deduplication, decision history, durable jobs and persisted checkpoints.
-- Nimble research, Liquid extraction and Tinybird analytics adapters. Offline
-  contract tests are NOT proof of live integrations. Missing configuration or
-  spending authorization produces BLOCKED, never a fake result.
-- Early Access $299/month, one business. Advertising/custom implementation
-  separate. Request access saves an inquiry only if the database is available.
-  No checkout, payment collection, automatic subscription or emails.
-- Local Manrope, original SVG creative cards, reduced motion and PWA manifest.
-  No offline AI, background microphone or service-worker API/data caching.
-
-## Truth boundaries
-
-The public tour uses local fixtures and accelerated time. It makes no sponsor
-calls and does not prove a server restart. Backend restart tests use actual
-PostgreSQL and a separate process killed after persisting a checkpoint.
-
-Liquid results are proposals: human review is required before applying fields.
-Deterministic rules, not confidence scores, qualify leads. Unknown budget is not
-zero. Unknown attribution stays unknown. Small samples do not establish winners.
-
-An uncertain external-call outcome is blocked, not retried automatically.
-Persisted provider results can resume without repeated calls. This is NOT
-upstream exactly-once delivery. Tinybird metrics enter decisions only after
-matching the current versioned PostgreSQL snapshot.
-
-The existing Gradium/Boson transport remains. The acquisition voice adapter is
-authenticated, lead-scoped and disabled by default. This first-cut UI uses text,
-not a claimed live microphone integration. No live sponsor or voice success is
-claimed until verified receipts exist.
-
-## Develop
-
-Node 22.12+.
+Node 22.12+. The public game requires no database or provider keys.
 
 ```sh
 npm ci
-npm run db:test
-cp .env.example .env
 npm run build
-npm run start:local
+npm start
 ```
 
-The local test database binds 127.0.0.1:55438 and persists in ignored
-`.cache/acquisition-test-pg`. Test-only DSN:
-`postgresql://compass_test:local-test-only@127.0.0.1:55438/compass_test`.
-Never use these credentials or this database for customer data.
+Open http://localhost:8770. The scripted memory stress test is marked explicitly;
+disable it before starting to see the fact-retention path. Pause, inspect a
+teammate or open Memory X-ray without leaving the board. Changing the deadline or
+a dependency can cause the mission to miss its target. There is no guaranteed win.
 
-Set DATABASE_URL, a random 32+ character BETTER_AUTH_SECRET, and the explicit
-BETTER_AUTH_URL. Production requires HTTPS and separate secrets. Missing
-configuration fails closed. Sponsor execution is disabled by default.
+## What is real
+
+- React/Vite game UI, deterministic local simulation and interactive controls.
+- Typed fixture/live transports with validation, ordered events and reconnect
+  recovery. Live never falls back to fixtures.
+- Authenticated same-origin bridge for Vincent's separate runtime. Defaults to
+  BLOCKED; installing it does not create an agent backend or approve spending.
+- Existing PostgreSQL/Better Auth and acquisition infrastructure preserved.
+
+The public simulation makes no sponsor/model calls. Fictional team data is
+labelled in both modes. Live AI may appear only for a verified live-mode snapshot.
+No actual multi-week performance, customer adoption, on-device Liquid, Rawtree
+use, cache savings or real sponsor success is implied.
+
+## Routes
+
+- `/`: public game, no registration, no paid APIs.
+- `/app`: private runtime experience, BLOCKED until configured and signed in.
+- `/login?returnTo=/app`: existing invited account sign-in.
+- `/presentation`, `/present`, `/story`, old HTML aliases: the same game with
+  `?stage=1`, not a separate deck.
+- `/acquisition`: preserved public acquisition demo.
+- `/acquisition/app`: preserved private acquisition workspace.
+
+## Vincent runtime
+
+Vincent owns Strategist, Doer, Cleaner, Shadow, recovery, persistence and sponsor
+integrations. Read [the contract](docs/REMASTER_CONTRACT.md). The server runtime URL
+and service token never enter browser configuration. Runtime ownership and
+idempotency must be enforced using the verified server-to-server tenant identity.
+
+Existing invited sessions, PostgreSQL and BETTER_AUTH_URL must be configured for
+private use. Keep REMASTER_LIVE_ENABLED false until runtime, ownership checks and
+an explicit spending cap pass. No automatic retry of ambiguous paid commands.
+
+## Checks and delivery
 
 ```sh
-npm test
-ACQUISITION_TEST_DATABASE_URL=postgresql://compass_test:local-test-only@127.0.0.1:55438/compass_test npm run test:acquisition
-npm run typecheck
-npm run test:acquisition-ui
 npm run build
+npm test
+npm run test:remaster
+npm run qa:remaster
+npm run record:remaster
 ```
 
-PostgreSQL tests explicitly skip without a test DSN. Never target production.
-Invitation issuance is operator-only, email-bound, expiring and single-use.
-There is no public signup or automatic invitation/password-reset email.
+Browser QA uses Playwright Chromium (`npx playwright install chromium` if absent).
+Recording additionally requires FFmpeg and ffprobe. Rendered MP4s, raw captures
+and reports stay in ignored `delivery/`; render scripts are committed.
+No new generated promo, Higgsfield, DaVinci or paid media is required.
 
-## Delivery and release
+For preserved PostgreSQL tests, use `npm run db:test` and the test-only DSN in
+[verification](docs/ACQUISITION_VERIFICATION.md). Stop preview workers against
+that database during integration tests.
 
-- [API contract](docs/ACQUISITION_CONTRACT.md)
-- [Authentication](docs/ACQUISITION_AUTH.md)
-- [Sponsor configuration and official sources](docs/ACQUISITION_PROVIDERS.md)
-- [Release gates and rollback](docs/ACQUISITION_RELEASE.md)
-- [Executed checks and remaining blockers](docs/ACQUISITION_VERIFICATION.md)
-- [Three-minute stage script](docs/ACQUISITION_PITCH.md)
+## Release
 
-`main` auto-deploys to the existing Railway `compass-web` service and
-https://mycompass.world. Implementation branch: `codex/acquisition-engine`.
-Do not merge before database/auth/release gates pass. A working public fixture
-demo is not a deployed production SaaS.
+Branch codex/remaster-experience starts at 5264a9e. One integrator owns main and
+Railway. Main auto-deploys; do not merge before production gates pass. Missing
+Vincent runtime, sponsor keys and resource approval remain explicit blockers.
+No database tables or acquisition records are removed. An online fixture game
+is not proof of a deployed autonomous SaaS.
 
-No Isaac data, Meta events, ad account, paid generation or billing code was
-imported. Disclose existing voice infrastructure, AI-assisted development and
-synthetic data in the hackathon submission.
+- [Product brief](docs/PRODUCT_BRIEF.md)
+- [Runtime contract](docs/REMASTER_CONTRACT.md)
+- [Stage script](docs/REMASTER_PITCH.md)
+- [Verification and limits](docs/REMASTER_VERIFICATION.md)
+- [Preserved acquisition brief](docs/ACQUISITION_PRODUCT_BRIEF.md)
+
+Disclose reused infrastructure, AI-assisted development, synthetic time/data and
+deliberate memory-fault injection. Do not submit fictional metrics as experiments.

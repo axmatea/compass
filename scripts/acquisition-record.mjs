@@ -17,7 +17,7 @@ const at=async(seconds,label,action)=>{
  await action();timecoded.push({seconds,label});
 };
 try{
- await page.goto(`${base}/?tour=1`);await page.getByRole('region',{name:'Guided demo tour'}).waitFor();await page.evaluate(()=>document.fonts.ready);
+ await page.goto(`${base}/acquisition?tour=1`);await page.getByRole('region',{name:'Guided demo tour'}).waitFor();await page.evaluate(()=>document.fonts.ready);
  const tour=page.getByRole('region',{name:'Guided demo tour'});
  const next=label=>tour.getByRole('button',{name:label,exact:true}).click();
  await at(8,'Mission and explicit fixture scope',()=>page.mouse.move(710,295,{steps:25}));

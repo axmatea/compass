@@ -1,4 +1,29 @@
-# Acquisition video handoff
+# REMaster video handoff
+
+The active release is now COMPASS REMaster. Record the real game using
+`npm run record:remaster`, not the former acquisition tour. Deliver the raw
+Playwright source, deterministic action script, timecoded manifest and
+`delivery/remaster/COMPASS_REMaster_Walkthrough_180s_1080p.mp4`.
+
+Target: 180 seconds, 1920x1080, 30 fps, H.264, silent for live narration using
+`docs/REMASTER_PITCH.md`. The public game uses a synthetic team and scripted
+simulation; day-30 loss is deliberate fault injection. Keep these labels visible.
+The recording must show Start, Sarah's availability, archive, Doer/Shadow
+disagreement, recovery, and the outcome actually produced by the fixture rules.
+No real model execution, provider receipt, token savings or production readiness
+may be inferred from this capture. Live integration is separately gated.
+
+Use Playwright and FFmpeg, not a claimed Higgsfield or DaVinci MCP workflow.
+Verify the completed file with ffprobe, full decode, and sampled frames. Large
+files remain in ignored delivery/. Record the actual results in
+`docs/REMASTER_VERIFICATION.md`; this specification is not proof of a render.
+
+REMaster first cut is now rendered and verified: 179.967 seconds, 1920x1080,
+30 fps H.264, silent. Output and raw-source manifest are in `delivery/remaster/`.
+It shows the real fixture UI, not live agent execution. See the verification
+report for capture scope and playback checks.
+
+## Preserved acquisition recording
 
 Priority: actual product walkthrough, not a new generated promo. The old film
 depicts a different concept and is not evidence of this release's capabilities.

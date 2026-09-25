@@ -1,18 +1,18 @@
 # Acquisition frontend
 
 React 19 workspace, intentionally separate from the legacy frontend. The root
-entry is `index.html` -> `src/acquisition/main.tsx`.
+entry is `acquisition.html` -> `src/acquisition/main.tsx`.
 
 ## Boundaries
 
-- `/` uses only synthetic AI Media Global scenario fixtures. No research,
+- `/acquisition` uses only synthetic AI Media Global scenario fixtures. No research,
   extraction, analytics, messaging, ad buying, or voice call is made by the demo.
 - The public status check reads `/api/acquisition/status`. The early-access form
   is explicitly real and requires a successful durable-save response before
   showing confirmation. The planned $299/month price is not a checkout.
-- `/app` and `/login` use invited-session auth and canonical LIVE state. They
+- `/acquisition/app` and `/login` use invited-session auth and canonical LIVE state. They
   never fall back to fixtures when auth, database, or API access is unavailable.
-- The seven-step tour starts at `/?tour=1` or legacy hashes, uses the same screens,
+- The seven-step tour starts at `/acquisition?tour=1` or legacy hashes, uses the same screens,
   and labels synthetic data and accelerated time. Starting the tour resets only
   local demo state. Server route redirects belong to the integrator.
 - Extraction is a proposal. Each non-null field requires explicit review and
@@ -22,7 +22,7 @@ entry is `index.html` -> `src/acquisition/main.tsx`.
 
 ## Owned files
 
-- `index.html`
+- `acquisition.html`
 - `public/manifest.webmanifest`
 - `public/acquisition/favicon.svg`
 - `public/acquisition/fonts/manrope-variable.ttf`, `OFL.txt`, `README.md`

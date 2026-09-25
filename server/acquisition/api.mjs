@@ -102,5 +102,5 @@ export async function createAcquisition({env=process.env,pool:injectedPool,provi
     const isAuthorized=async()=>{try{const current=await auth.getIdentity(req);return current?.tenantId===identity.tenantId&&current?.userId===identity.userId;}catch{return false;}};
     return createAcquisitionVoiceRuntime({store,identity,leadId:url.searchParams.get('leadId'),isAuthorized});
   }
-  return {handle,status,store,worker,authorizeVoice,async close(){for(const res of streams)res.end();await worker?.stop();await auth?.close?.();if(pool&&!injectedPool)await pool.end();}};
+  return {handle,status,store,worker,authorizeVoice,getIdentity:req=>auth?auth.getIdentity(req):Promise.resolve(null),async close(){for(const res of streams)res.end();await worker?.stop();await auth?.close?.();if(pool&&!injectedPool)await pool.end();}};
 }

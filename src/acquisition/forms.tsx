@@ -481,7 +481,9 @@ export function AuthForm({
             if (!result.ok) throw new Error("Invitation was not accepted.");
             setAccepted(true);
             setKind("sign-in");
-            window.history.replaceState(null, "", "/app");
+            const returnToRemaster = window.location.pathname === "/login" &&
+              new URLSearchParams(window.location.search).get("returnTo") === "/app";
+            window.history.replaceState(null, "", returnToRemaster ? "/login?returnTo=/app" : "/acquisition/app");
           } else {
             await api("/api/auth/sign-in/email", { email, password });
             await onAuthenticated();
