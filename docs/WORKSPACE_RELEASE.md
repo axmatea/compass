@@ -9,6 +9,11 @@ Only one integrator pushes the release. Old PRs are not automatically merged.
 
 ## Production gates
 
+Update: a later explicit user request authorizes publishing the public demo and
+presentation (FINAL_RELEASE.md) without a production database. The private SaaS
+gates below remain mandatory; do not present public-demo publication as completion
+of production authentication, persistence or AI-runtime integration.
+
 Railway CLI access and GitHub repository access were verified. Project
 `compass-nayl-vincent`, service `compass-web`, currently serves mycompass.world.
 Only the web service exists. On inspection, `DATABASE_URL`, `BETTER_AUTH_SECRET`,

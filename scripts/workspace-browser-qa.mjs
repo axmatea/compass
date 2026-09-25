@@ -13,7 +13,7 @@ try {
     const page=await context.newPage(); const requests=[];
     page.on('pageerror',e=>report.errors.push(e.message));
     page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/'))requests.push(r.url());});
-    await page.goto(`${base}/demo`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
+    await page.goto(`${base}/demo/table`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
     await page.evaluate(()=>document.fonts.ready);
     await page.screenshot({path:`${out}/${width}-table.png`,fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
@@ -56,7 +56,7 @@ try {
     await context.close();
   }
   const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
-  await page.goto(`${base}/demo`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
+  await page.goto(`${base}/demo/table`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
   await page.keyboard.press('Tab');assert(await page.evaluate(()=>document.activeElement!==document.body));
   await page.getByRole('button',{name:'New project',exact:true}).click();
   await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);

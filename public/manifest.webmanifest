@@ -1,11 +1,11 @@
 {
   "name": "COMPASS Workspace",
   "short_name": "COMPASS",
-  "description": "Your team's context, tasks and decisions at one shared table.",
+  "description": "Keep the reason. Move the work. An interactive COMPASS demo.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f5f0",
-  "theme_color": "#f6f5f0",
+  "background_color": "#0d0d0c",
+  "theme_color": "#0d0d0c",
   "icons": [
     {
       "src": "/acquisition/favicon.svg",

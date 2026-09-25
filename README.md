@@ -1,6 +1,6 @@
 # COMPASS
 
-**Your team's context, tasks and decisions at one shared table.**
+**Keep the reason. Move the work.**
 
 COMPASS is a workspace for people, not an agent-session monitor. Bring a project
 brief, task CSV or a short update; keep source material alongside the work it
@@ -19,8 +19,8 @@ membership. Tokens are secrets: share only with the intended recipient.
 
 ## What works and what does not
 
-- React/SVG team table with accessible task and context controls; no fabricated
-  online presence or productivity telemetry.
+- Public team cockpit with accessible tasks, original context and a scripted
+  approval flow. No cartoon office, fabricated presence or productivity scores.
 - Separate PostgreSQL workspace domain, owner/member permissions, versioned
   task changes, one-use invitations and source/audit records.
 - Text, TXT, Markdown and CSV task imports with preview. Uploaded content is
@@ -33,15 +33,23 @@ membership. Tokens are secrets: share only with the intended recipient.
 
 ## Routes
 
-`/` public example; `/app` private team workspace; `/login?returnTo=/app` sign-in.
-`/` and `/demo/workspace` open the presentation-ready demo account immediately,
-with Workspace, Pipeline, Memory and Machines. No login or authentication. `/demo`
-retains the earlier editable table example. All data and machine
-steps are labelled synthetic; changes are local and reset on refresh or Reset.
-Check this route with `node scripts/workspace-portal-qa.mjs` while preview runs.
-`/demo/remaster` previous memory simulation. `/acquisition` and
-`/acquisition/app` preserve the earlier acquisition product and its data.
-Legacy presentation aliases lead to the current product rather than a slide deck.
+| Route | Purpose |
+| --- | --- |
+| `/`, `/demo/workspace` | Immediate populated local demo; no account or model calls |
+| `/presentation` | Final narrative with speaker notes and embedded Horizon |
+| `/horizon` | Browser-only long-horizon simulation; 2D, 3D and Phone |
+| `/app`, `/login?returnTo=/app` | Real team account, requires configured DB/auth |
+| `/demo`, `/voice-demo` | Existing voice-to-site prototype, not team-runtime integration |
+| `/presentation/legacy` | Previous cinematic deck, including its Horizon scene and film |
+| `/demo/table`, `/demo/remaster` | Previous table and memory simulation examples |
+| `/acquisition`, `/acquisition/app` | Previous acquisition domain, unchanged storage |
+
+Horizon percentages and revenue are illustrative simulation inputs/results,
+not customer outcomes or measured model confidence. Workspace proposals are
+scripted and local. Voice/provider capabilities are separate and are not
+represented as connected to team memory. No paid model call is made merely by
+opening the public workspace or presentation. `/present` and `/story` redirect
+to the final presentation. There are no new billing services or public signup.
 
 ## Verification and release
 
@@ -50,7 +58,8 @@ Run `npm run build`, `npm test`, `npm run test:workspaces` and
 `docs/WORKSPACE_RELEASE.md`. Never run cleanup tests against production.
 
 See `docs/WORKSPACE_API.md` for the workspace contract and
-`docs/WORKSPACE_RELEASE.md` for production gates and evidence. A local screenshot
+`docs/FINAL_RELEASE.md` for this public-demo release and
+`docs/WORKSPACE_RELEASE.md` for private-SaaS gates. A local screenshot
 or HTTP 200 is not proof of a deployed collaborative SaaS.
 
 ## Attribution

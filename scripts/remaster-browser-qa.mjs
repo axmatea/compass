@@ -94,7 +94,7 @@ try{
   assert(s.tasks.some(t=>t.status!=='done'));
   assert(s.facts.some(f=>f.id==='fact-dependency-delay'));
   report.checks.push({dependencyDelay:'Missing dependency blocks downstream work and remains in evidence'});
-  await page.goto(`${base}/presentation`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
+  await page.goto(`${base}/demo/table`);await page.getByRole('region',{name:'Interactive team table'}).waitFor();
   assert.equal(new URL(page.url()).searchParams.get('stage'),'1');
   await page.keyboard.press('Tab');assert(await page.evaluate(()=>document.activeElement!==document.body));
   await page.goto(`${base}/demo/remaster/app`);await page.waitForTimeout(700);

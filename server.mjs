@@ -29,8 +29,13 @@ const server = createServer(async (req,res) => {
  try {
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/healthz'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end(req.method==='HEAD'?undefined:JSON.stringify({ok:true,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local',acquisition:acquisition.status().database}));return;}
-  if(['/present','/presentation','/story','/present.html','/story.html','/demo.html'].includes(pathname.replace(/\/$/,''))){res.writeHead(302,{Location:'/?stage=1','Cache-Control':'no-store'}).end();return;}
-  const route = ['/acquisition','/acquisition/','/acquisition/app','/acquisition/app/','/login'].includes(pathname) ? '/acquisition.html' : ['/','/app','/app/','/demo','/demo/','/demo/workspace','/demo/workspace/','/demo/remaster','/demo/remaster/','/demo/remaster/app'].includes(pathname) ? '/index.html' : pathname;
+  if(['/present','/story','/present.html'].includes(pathname.replace(/\/$/,''))){res.writeHead(302,{Location:'/presentation','Cache-Control':'no-store'}).end();return;}
+  const normalized=pathname.replace(/\/$/,'')||'/';
+  const route = ['/acquisition','/acquisition/app','/login'].includes(normalized) ? '/acquisition.html'
+   : ['/voice-demo','/demo'].includes(normalized) ? '/live.html'
+   : normalized==='/horizon' ? '/horizon.html'
+   : normalized==='/presentation/legacy' ? '/story.html'
+   : ['/','/app','/presentation','/demo/table','/demo/workspace','/demo/remaster','/demo/remaster/app'].includes(normalized) ? '/index.html' : pathname;
   const file=resolve(root,'.'+route);
   if(!file.startsWith(root+sep)){res.writeHead(403).end();return;}
   const info=await stat(file);

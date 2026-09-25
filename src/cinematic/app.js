@@ -44,12 +44,12 @@ const sceneMedia = { 0: 'chaos', 5: 'speak' };
 const orbPos = [
  [80, 52, .28, 0], [50, 50, .2, 0], [50, 30, .92, 1], [50, 29, .62, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [81, 45, .44, 1], [50, 28, .58, 1],
- [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [50, 17, .36, .8], [50, 18, .48, 1]
+ [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [88, 18, .2, 0], [50, 17, .36, .8], [50, 18, .48, 1]
 ];
 const mobileOrbPos = [
  [75, 35, .25, 0], [50, 50, .2, 0], [50, 31, 1, 1], [50, 27, .7, 1],
  [84, 24, .3, .6], [84, 23, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1],
- [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [50, 16, .4, .7], [50, 17, .55, 1]
+ [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [86, 17, .18, 0], [50, 16, .4, .7], [50, 17, .55, 1]
 ];
 
 $('#contents').innerHTML = scenes.map((s, i) => `<a href="#${s.id}" data-scene="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${s.dataset.label}</a>`).join('');
@@ -173,7 +173,7 @@ function goTo(index, animate = true) {
 }
 function queueAdvance() {
  const current = Math.round(scrollPosition());
-  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 8000 : current === 10 ? 9000 : 5000;
+  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 8000 : current === 10 ? 9000 : current === 11 ? 16000 : 5000;
  // On the film scene, autoplay does not cut the film: it starts it and hands control to the presenter.
  if (current === FILM) { stopAuto(); startFilm(); return; }
  timer = window.setTimeout(() => {

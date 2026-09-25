@@ -4,7 +4,8 @@
 
 The primary product has changed to a shared human workspace. No existing promo
 or REMaster walkthrough demonstrates this new product. Use the stage text in
-WORKSPACE_RELEASE.md and the current verified UI; do not relabel an old video.
+`src/finale/SPEAKER_SCRIPT.md`, `/presentation` and the current verified UI;
+do not relabel an old video. The unified release is documented in FINAL_RELEASE.md.
 No new paid media generation or video render is included in this release.
 
 The notes below are retained for the separate `/demo/remaster` example only.

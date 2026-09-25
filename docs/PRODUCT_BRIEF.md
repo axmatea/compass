@@ -4,10 +4,15 @@ Current direction, 2026-09-25: a small team brings project context, updates shar
 tasks and keeps original sources beside decisions. The owner manages membership
 and approves agent proposals; participants add materials and update tasks.
 
-The new entrypoint is the React/SVG team table. Public `/` is a clearly labelled
+The current entrypoint is the dark team cockpit, not the rejected cartoon table.
+Public `/` is a clearly labelled
 fictional example; `/app` requires authentication and persistent PostgreSQL.
 Manual collaboration is separate from AI. A human-workspace runtime is not yet
 verified; no self-learning or lossless-compression claim is supported.
+
+The unified presentation is /presentation. Horizon (from main 005592b) is a
+separate simulated A/B campaign example: percentages/revenue are illustrative.
+See FINAL_RELEASE.md for boundaries between local demo, tested code and deployment.
 
 Current implementation and release gates: root README, WORKSPACE_API.md and
 WORKSPACE_RELEASE.md. No subscription price carries over to this product.
