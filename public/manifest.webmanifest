@@ -1,0 +1,17 @@
+{
+  "name": "COMPASS Acquisition Workspace",
+  "short_name": "COMPASS",
+  "description": "A little more direction for your next client.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f5f0",
+  "theme_color": "#f6f5f0",
+  "icons": [
+    {
+      "src": "/acquisition/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

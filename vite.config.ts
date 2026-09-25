@@ -7,17 +7,18 @@ export default defineConfig({
     name: "compass-demo-route",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/demo\/?/, "/live.html");
+        if (req.url && /^\/(app|demo|presentation|present|story|login)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
         next();
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && /^\/demo\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/demo\/?/, "/live.html");
+        if (req.url && /^\/(app|demo|presentation|present|story|login)\/?(?:\?|$)/.test(req.url)) req.url = req.url.replace(/^\/[^/?]+\/?/, "/index.html");
         next();
       });
     },
   }],
+  server: { proxy: { '/api': { target: 'http://127.0.0.1:8770', ws: true } } },
   build: {
     outDir: "dist",
     rollupOptions: {

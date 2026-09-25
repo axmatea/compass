@@ -1,50 +1,94 @@
-# COMPASS
+# COMPASS Acquisition
 
-A voice agent that adapts while acting. Say what you want, change your mind mid-task, and COMPASS updates only what changed instead of starting over.
+Keep the next acquisition decision connected to what actually happened.
 
-- Website: https://mycompass.world
-- Live demo: https://mycompass.world/demo
-- Presentation: https://mycompass.world/presentation
-- Repository: https://github.com/axmatea/compass (public)
+An invite-only workspace for service businesses linking experiment hypotheses,
+inbound lead qualification, delayed answers and the next test. First scenario:
+AI Media Global's AI implementation service. Not an ad-spending autopilot.
 
-## What is implemented (deployed)
+## This release
 
-- `/` website: sales-first landing for the voice agent that builds websites.
-- `/presentation` (alias `/story`, `/present` redirects here): the hackathon presentation, a 12-scene scroll narrative with the film, two voice prompts, the updated brief and what runs under the hood. Speaker notes carry the stage script.
-- `/demo` voice to website. Say what page you want; COMPASS keeps a structured brief (business, audience, tone, theme, accent, font, hero layout, sections), writes the copy with the `write_copy` tool and renders the page into a sandboxed preview. A follow-up like "Make it darker, change the hero and add a product section" patches only the changed fields, keeps the rest, cancels the in-flight copy step and re-writes only the sections that depend on what changed. Every turn goes through `/api/site/turn` (SSE, contract v1).
-- Inference: General Compute (`minimax-m2.7`, OpenAI-compatible, `GENERAL_COMPUTE_API_KEY`) is the primary model for interpretation and copy; Nebius GLM-5.3 is the automatic failover (`server/llm/nebius.mjs`, `createLlmChain`). `/api/health` reports which provider is active.
-- Voice: Gradium (`GRADIUM_API_KEY`): streaming speech-to-text with semantic turn detection (the turn-taking recipe mirrors the Pipecat `GradiumSTTService` reference from the hackathon quickstart: 3 s horizon, inactivity 0.5, post-flush cooldown) and streaming text-to-speech, relayed through the server-side WebSocket bridge `/api/voice/realtime` (`server/voice/gradium-bridge.mjs`). Barge-in closes the current speech and the new utterance becomes a COMPASS turn. Boson Higgs Realtime remains as the second provider; browser speech is the last fallback. The UI says which voice is active. No API key reaches the browser.
-- `/api/turn` dinner-planning agent (real OpenStreetMap restaurant search) still runs behind the same runtime and is used by the tests.
+- `/`: interactive synthetic DEMO. Mission, Experiments, Pipeline and Memory.
+- `/app`: private workspace, Better Auth sessions, PostgreSQL tenant isolation.
+- `/?tour=1`: guided tour of the same product. Old presentation routes redirect.
+- Versioned rules, manual experiments/leads, per-field evidence clocks, event
+  deduplication, decision history, durable jobs and persisted checkpoints.
+- Nimble research, Liquid extraction and Tinybird analytics adapters. Offline
+  contract tests are NOT proof of live integrations. Missing configuration or
+  spending authorization produces BLOCKED, never a fake result.
+- Early Access $299/month, one business. Advertising/custom implementation
+  separate. Request access saves an inquiry only if the database is available.
+  No checkout, payment collection, automatic subscription or emails.
+- Local Manrope, original SVG creative cards, reduced motion and PWA manifest.
+  No offline AI, background microphone or service-worker API/data caching.
 
-## Not implemented
+## Truth boundaries
 
-- Restaurant search is real but read-only: OpenStreetMap (Nominatim + Overpass), `server/tools/osm-restaurant-search.mjs`. Availability is not checked. Nothing is booked, reserved or sent. The offline replay (`?backend=mock`) uses sample data and is labelled as such.
-- The generated page exists only inside the session preview (`/api/site/session/:id/page`, strict CSP, no scripts). Nothing is published, hosted or deployed on anyone's behalf. COMPASS is not a website builder product; the page is the visual use case for changing intent.
-- No accounts, payments, calendar writes or cross-session memory.
-- Multilingual voice is not claimed.
+The public tour uses local fixtures and accelerated time. It makes no sponsor
+calls and does not prove a server restart. Backend restart tests use actual
+PostgreSQL and a separate process killed after persisting a checkpoint.
+
+Liquid results are proposals: human review is required before applying fields.
+Deterministic rules, not confidence scores, qualify leads. Unknown budget is not
+zero. Unknown attribution stays unknown. Small samples do not establish winners.
+
+An uncertain external-call outcome is blocked, not retried automatically.
+Persisted provider results can resume without repeated calls. This is NOT
+upstream exactly-once delivery. Tinybird metrics enter decisions only after
+matching the current versioned PostgreSQL snapshot.
+
+The existing Gradium/Boson transport remains. The acquisition voice adapter is
+authenticated, lead-scoped and disabled by default. This first-cut UI uses text,
+not a claimed live microphone integration. No live sponsor or voice success is
+claimed until verified receipts exist.
 
 ## Develop
 
+Node 22.12+.
+
 ```sh
 npm ci
-cp .env.example .env        # GENERALCOMPUTE_API_KEY, GRADIUM_API_KEY, NEBIUS_API_KEY, BOSON_API_KEY: server-side only, never VITE_
-npm run doctor              # presence check, never prints values
-npm run typecheck
-npm test                    # offline suite
-npm run build && npm run start:local   # http://localhost:8770
+npm run db:test
+cp .env.example .env
+npm run build
+npm run start:local
 ```
 
-Live checks (need keys): `npm run test:live` (GLM), `npm run probe:boson`, `npm run test:voice:live` (real Boson voice, incl. barge-in).
+The local test database binds 127.0.0.1:55438 and persists in ignored
+`.cache/acquisition-test-pg`. Test-only DSN:
+`postgresql://compass_test:local-test-only@127.0.0.1:55438/compass_test`.
+Never use these credentials or this database for customer data.
 
-## Source layout
+Set DATABASE_URL, a random 32+ character BETTER_AUTH_SECRET, and the explicit
+BETTER_AUTH_URL. Production requires HTTPS and separate secrets. Missing
+configuration fails closed. Sponsor execution is disabled by default.
 
-- `index.html`, `story.html`, `src/site/`, `src/cinematic/`: website and presentation.
-- `live.html`, `src/components/`, `src/voice/`: the `/demo` agent UI.
-- `present.html`, `src/presentation/stage/`: earlier stage deck, kept in the build but not routed (`/present` redirects to `/presentation`).
-- `server.mjs`, `server/`: static server, `/healthz`, `/api/health`, `/api/turn`, voice bridge, intent state, tools.
-- `test/`: offline and live tests.
-- `boson-claude-cli-bridge/`: separate local prototype (Python, runs on a laptop with the Claude CLI). Not deployed and not part of the public demo.
+```sh
+npm test
+ACQUISITION_TEST_DATABASE_URL=postgresql://compass_test:local-test-only@127.0.0.1:55438/compass_test npm run test:acquisition
+npm run typecheck
+npm run test:acquisition-ui
+npm run build
+```
 
-## Deploy
+PostgreSQL tests explicitly skip without a test DSN. Never target production.
+Invitation issuance is operator-only, email-bound, expiring and single-use.
+There is no public signup or automatic invitation/password-reset email.
 
-GitHub `main` is the source. Railway (existing service `compass-web`) builds the `Dockerfile` on push to `main` and serves https://mycompass.world. Secrets live only in Railway variables.
+## Delivery and release
+
+- [API contract](docs/ACQUISITION_CONTRACT.md)
+- [Authentication](docs/ACQUISITION_AUTH.md)
+- [Sponsor configuration and official sources](docs/ACQUISITION_PROVIDERS.md)
+- [Release gates and rollback](docs/ACQUISITION_RELEASE.md)
+- [Executed checks and remaining blockers](docs/ACQUISITION_VERIFICATION.md)
+- [Three-minute stage script](docs/ACQUISITION_PITCH.md)
+
+`main` auto-deploys to the existing Railway `compass-web` service and
+https://mycompass.world. Implementation branch: `codex/acquisition-engine`.
+Do not merge before database/auth/release gates pass. A working public fixture
+demo is not a deployed production SaaS.
+
+No Isaac data, Meta events, ad account, paid generation or billing code was
+imported. Disclose existing voice infrastructure, AI-assisted development and
+synthetic data in the hackathon submission.

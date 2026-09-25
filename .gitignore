@@ -12,3 +12,6 @@ dist/
 *.log
 !.env.example
 .cache/
+delivery/
+playwright-report/
+test-results/

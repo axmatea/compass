@@ -1,88 +1,54 @@
-# COMPASS product brief
+# COMPASS Acquisition product brief
 
-Updated: September 17, 2026, Pacific time. Working branch: `codex/compass-homepage`.
-This brief describes the local website revision. It has not been deployed.
+Updated September 25, 2026. Implementation branch: codex/acquisition-engine.
+This brief describes the release candidate, not an assertion of production deployment.
 
-## Product and audience
+## Positioning
+COMPASS connects acquisition hypotheses to the quality of inbound conversations,
+remembers why decisions changed, and revises the next test when delayed evidence
+arrives. First workflow: demand for AI Media Global's AI implementation service.
+Audience and willingness to pay remain hypotheses, not validated customer results.
 
-COMPASS is a voice-first thinking-partner concept by NAYL and Vincent.
-The initial audience hypothesis is independent professionals and founders working
-through an uncertain commitment, such as a client request. This is a hypothesis,
-not a validated market or a claim of customer adoption.
+**Promise:** Keep the next decision connected to what actually happened.
 
-## Problem and intended outcome
+## Concrete problem
+A form conversion can look successful before budget, fit, authority or timeline
+is known. Later answers and changed rules must update qualification without
+double-counting leads, erasing evidence or claiming an experiment has won.
 
-People often discover the real concern while explaining it. An initial
-interpretation can be wrong. The proposed experience lets a person correct the
-interpretation without restating the facts, then review one concrete next step.
+## Release candidate behavior
+- Invite-only email/password accounts with server-derived workspace identity.
+- PostgreSQL projects, hypotheses, leads, evidence, versioned rules and decisions.
+- Event deduplication and per-field time ordering.
+- Durable provider jobs with checkpoint recovery and uncertain-outcome blocking.
+- Nimble, Liquid and Tinybird adapters with strict schemas and redacted receipts.
+- Human review before extracted fields become facts; deterministic qualification.
+- Public synthetic demo and same-product guided tour.
+- Early-access request persistence. $299/month proposed price; no payment flow.
 
-The shared example: a client requests Friday. The person clarifies that Friday
-works, but payment is the concern. They choose 50% upfront and 50% on delivery.
-The result is a reply draft for the person to review. Nothing is sent.
+## Not yet established
+Production database availability, sponsor credentials, actual provider conformance,
+live paid calls, production rollout, customer adoption and measurable ROI are
+not established by code or mock tests. Consult the current verification report.
+The first-cut UI is text-first; voice transport remains but microphone UI is not
+claimed connected. No automatic ads, outbound sends, CRM or Meta writes.
 
-Brand line: “Think out loud. Find what’s next.”
-Closing promise: “Not just an answer. A next step.”
-Use these as design intent, not as evidence of a working reasoning engine.
+## Visual and narrative direction
+Warm light surfaces, graphite, cobalt, locally bundled Manrope. Four utility
+screens: Mission / Experiments / Pipeline / Memory. Original typographic creative
+cards, meaningful state transitions, reduced motion. No girl, orb, hero intro or
+separate slide deck. Legacy presentation paths enter the guided tour.
 
-## Current design direction
+The tour follows synthetic Mira: missing budget -> delayed $6,500 answer ->
+qualified against $5,000 -> duplicate ignored -> threshold becomes $8,000 ->
+qualification changes while the evidence is retained. Four leads do not prove a
+winning campaign. Accelerated time and synthetic data remain visible.
 
-- Name: COMPASS. SIDEKICK is a superseded working name.
-- Dark sci-fi environment, restrained ice-blue illumination, generous space.
-- Avenir Next with local system fallbacks; no remote font requirement.
-- Fictional adult heroine: existing `public/assets/heroine.png`.
-- Glowing orb is a visual concept, not a live microphone/AI status indicator.
-- Installed Zoey OS inspected as a visual reference: central orb, small status
-  labels, thin bordered panels and compact controls. No Zoey code or branding copied.
-- Main website is a scrollable explanation. Presentation is an independent stage
-  experience with eight scenes and its existing animations.
-- Motion should explain a changing thought, respect reduced motion, and offer
-  a pause control on the landing page.
-
-## Routes in this revision
-
-| Route | Purpose |
-| --- | --- |
-| `/` | Website: problem, interaction, concrete result, honest implementation status |
-| `/present.html` | Existing eight-scene sci-fi presentation, with a return-to-site link |
-| `/#present` | Compatibility entry for presentation links; redirects to `/present.html` |
-| `/demo.html?deck=0#demo` | Existing guided conversation examples and editable drafts |
-| `/film.html` | Existing NYC product film, captions and concept disclosure |
-
-## Implemented browser behavior
-
-- Scrollable responsive website and local, prepared interaction states.
-- Presentation with animated orb, keyboard navigation and speaker notes.
-- Four prepared demo scenarios, editable/downloadable drafts.
-- Optional browser speech greeting and browser-dependent speech tools in the
-  existing demo. These do not establish a voice AI backend.
-- NYC film player, English captions and separate presentation route.
-
-## Concepts and unknowns
-
-No open-ended voice AI backend, persistent memory, dependable interruption
-handling, or external action execution is connected in this website.
-Prepared replies and state changes must be labelled scripted concepts.
-Latency, correction accuracy, reliability, usefulness and customer demand have
-not been measured. No autonomous booking, sending or paid action is implied.
-The NYC film contains generated people/scenes and a scripted conversation.
-
-## Coordination and ownership
-
-- Website task: landing, navigation, presentation integration, approved media,
-  browser verification and deployment when the user requests it.
-- Video task: footage, sound and film production. This website task does not
-  purchase generation or overwrite the video production archive.
-- Text/editor task: narrative, concise copy and timed English stage script.
-  Consult this brief and verified implementation before making capability claims.
-- Update this file when decisions or implementation status change. Separate
-  chats do not automatically share all context; this repository is the handoff.
-
-## Source and release rules
-
+## Ownership and sources
+One integrator controls main and Railway. Workers do not independently deploy.
 Repository: https://github.com/axmatea/compass
-Production: https://compass-web-production-da39.up.railway.app/
-Railway project/service: `compass-nayl-vincent` / `compass-web`.
-Production branch: `main`. Merging or pushing to main triggers deployment.
-Use `codex/<task>` branches, preserve concurrent work, stage only owned files.
-No force push. Deploy only following a current user request.
-Higgsfield edits are not synchronized automatically with this repository.
+Existing production domain: https://mycompass.world
+Contract: ACQUISITION_CONTRACT.md. Script: ACQUISITION_PITCH.md.
+Release gates: ACQUISITION_RELEASE.md. Provider sources: ACQUISITION_PROVIDERS.md.
+No current film should imply the previous voice-thinking-partner or site-builder
+product is the new acquisition workflow.
