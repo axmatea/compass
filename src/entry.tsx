@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 
 const Workspace = lazy(() => import('./workspace/App'));
 const Remaster = lazy(() => import('./remaster/App'));
+const DemoPortal = lazy(() => import('./workspace/DemoPortal'));
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -16,6 +17,6 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 const legacy = /^\/demo\/remaster(?:\/|$)/.test(location.pathname);
 createRoot(document.getElementById('root')!).render(
   <Boundary><Suspense fallback={<main aria-busy="true">Opening COMPASS...</main>}>
-    {legacy ? <Remaster /> : <Workspace />}
+    {legacy ? <Remaster /> : location.pathname === '/' || /^\/demo\/workspace\/?$/.test(location.pathname) ? <DemoPortal /> : <Workspace />}
   </Suspense></Boundary>,
 );

@@ -30,7 +30,7 @@ const server = createServer(async (req,res) => {
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/healthz'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end(req.method==='HEAD'?undefined:JSON.stringify({ok:true,revision:process.env.RAILWAY_GIT_COMMIT_SHA||'local',acquisition:acquisition.status().database}));return;}
   if(['/present','/presentation','/story','/present.html','/story.html','/demo.html'].includes(pathname.replace(/\/$/,''))){res.writeHead(302,{Location:'/?stage=1','Cache-Control':'no-store'}).end();return;}
-  const route = ['/acquisition','/acquisition/','/acquisition/app','/acquisition/app/','/login'].includes(pathname) ? '/acquisition.html' : ['/','/app','/app/','/demo','/demo/','/demo/remaster','/demo/remaster/','/demo/remaster/app'].includes(pathname) ? '/index.html' : pathname;
+  const route = ['/acquisition','/acquisition/','/acquisition/app','/acquisition/app/','/login'].includes(pathname) ? '/acquisition.html' : ['/','/app','/app/','/demo','/demo/','/demo/workspace','/demo/workspace/','/demo/remaster','/demo/remaster/','/demo/remaster/app'].includes(pathname) ? '/index.html' : pathname;
   const file=resolve(root,'.'+route);
   if(!file.startsWith(root+sep)){res.writeHead(403).end();return;}
   const info=await stat(file);

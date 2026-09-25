@@ -2,6 +2,23 @@ Original prompt: Implement COMPASS REMaster as one interactive game: launch an A
 
 ## Human workspace implementation, 2026-09-25
 
+- Demo table visual revision: full-width project room, original SVG desk,
+  upholstered chairs, laptop, notebook, plant and consistent daylight shadows.
+  Compact member portraits replace oversized characters; readable task cards
+  live below the illustration. People/folder/tasks retain keyboard controls.
+  Real workspace scene and authentication remain unchanged; no media spend.
+
+- Removed the demo entry gate on request. Root and /demo/workspace now open
+  directly into the populated fictional account; reset/reload never asks for
+  login. Private /app authentication is unchanged.
+
+- Added /demo/workspace after user requested a ready-to-show frontend account.
+  One-click fictional identity, task pipeline, source-backed Memory, manually
+  stepped Machines example and explicit proposal approval. No new credentials,
+  API requests, models, billing, auth bypass or production publication.
+  Browser QA covers entry, all sections, source, approval, move, reset and exit
+  at 390/768/1440 with no overflow or JS errors.
+
 - User approved a shared workspace for humans, not contact CRM or coding agents.
 - Branch codex/human-workspace from e291648; backend and frontend have disjoint
   worker ownership. Main owns integration, auth redirects, QA and release.

@@ -34,6 +34,11 @@ membership. Tokens are secrets: share only with the intended recipient.
 ## Routes
 
 `/` public example; `/app` private team workspace; `/login?returnTo=/app` sign-in.
+`/` and `/demo/workspace` open the presentation-ready demo account immediately,
+with Workspace, Pipeline, Memory and Machines. No login or authentication. `/demo`
+retains the earlier editable table example. All data and machine
+steps are labelled synthetic; changes are local and reset on refresh or Reset.
+Check this route with `node scripts/workspace-portal-qa.mjs` while preview runs.
 `/demo/remaster` previous memory simulation. `/acquisition` and
 `/acquisition/app` preserve the earlier acquisition product and its data.
 Legacy presentation aliases lead to the current product rather than a slide deck.
