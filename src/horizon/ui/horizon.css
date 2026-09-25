@@ -1,4 +1,5 @@
 /* COMPASS: one screen, the Horizon is the product. */
+.hz-return{display:flex;gap:18px;font-size:11px}.hz-return a{color:var(--c-muted);text-decoration:none;padding:5px 0}.hz-return a:hover{color:var(--c-gold)}
 
 .cp {
   min-height: 100svh;

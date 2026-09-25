@@ -1,5 +1,6 @@
 
 /* COMPASS base layer. Black, gold, cream. Georgia for the wordmark and numbers, Helvetica for everything else. */
+@font-face{font-family:Compass Manrope;src:url('/acquisition/fonts/manrope-variable.ttf') format('truetype');font-weight:200 800;font-display:swap}
 :root {
   color-scheme: dark;
   --c-bg: #0d0d0c;
@@ -15,7 +16,7 @@
   --c-unknown: #77726a;
   --c-ok: #9fbf8f;
   --c-serif: Georgia, "Times New Roman", serif;
-  --c-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --c-sans: "Compass Manrope", sans-serif;
   --c-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --c-gutter: clamp(16px, 3.4vw, 64px);
 }

@@ -164,13 +164,14 @@ export function Compass() {
       <header className="cp-head">
         <div className="cp-left">
           <div className="cp-mark">COMPASS</div>
+          {!EMBED && <nav className="hz-return" aria-label="COMPASS navigation"><a href="/">Workspace</a><a href="/presentation">Presentation</a></nav>}
           {switcher}
         </div>
         <div className="cp-clock">
           <span className="cp-day" aria-live="polite">
             {sim ? `Day ${day}` : " "}
           </span>
-          <span className="cp-honest">Demo data, simulated clock</span>
+          <span className="cp-honest">Simulation · illustrative percentages and revenue</span>
         </div>
       </header>
 

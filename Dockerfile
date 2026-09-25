@@ -15,6 +15,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY server.mjs ./
 COPY server ./server
+COPY scripts/acquisition-invite.mjs ./scripts/acquisition-invite.mjs
 USER node
 EXPOSE 8080
 CMD ["node", "server.mjs"]

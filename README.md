@@ -1,50 +1,72 @@
 # COMPASS
 
-A voice agent that adapts while acting. Say what you want, change your mind mid-task, and COMPASS updates only what changed instead of starting over.
+**Keep the reason. Move the work.**
 
-- Website: https://mycompass.world
-- Live demo: https://mycompass.world/demo
-- Presentation: https://mycompass.world/presentation
-- Repository: https://github.com/axmatea/compass (public)
+COMPASS is a workspace for people, not an agent-session monitor. Bring a project
+brief, task CSV or a short update; keep source material alongside the work it
+informs. Team members update tasks. The owner controls invitations and approval.
 
-## What is implemented (deployed)
+## Run
 
-- `/` website: sales-first landing for the voice agent that builds websites.
-- `/presentation` (alias `/story`, `/present` redirects here): the hackathon presentation, a 12-scene scroll narrative with the film, two voice prompts, the updated brief and what runs under the hood. Speaker notes carry the stage script.
-- `/demo` voice to website. Say what page you want; COMPASS keeps a structured brief (business, audience, tone, theme, accent, font, hero layout, sections), writes the copy with the `write_copy` tool and renders the page into a sandboxed preview. A follow-up like "Make it darker, change the hero and add a product section" patches only the changed fields, keeps the rest, cancels the in-flight copy step and re-writes only the sections that depend on what changed. Every turn goes through `/api/site/turn` (SSE, contract v1).
-- Inference: General Compute (`minimax-m2.7`, OpenAI-compatible, `GENERAL_COMPUTE_API_KEY`) is the primary model for interpretation and copy; Nebius GLM-5.3 is the automatic failover (`server/llm/nebius.mjs`, `createLlmChain`). `/api/health` reports which provider is active.
-- Voice: Gradium (`GRADIUM_API_KEY`): streaming speech-to-text with semantic turn detection (the turn-taking recipe mirrors the Pipecat `GradiumSTTService` reference from the hackathon quickstart: 3 s horizon, inactivity 0.5, post-flush cooldown) and streaming text-to-speech, relayed through the server-side WebSocket bridge `/api/voice/realtime` (`server/voice/gradium-bridge.mjs`). Barge-in closes the current speech and the new utterance becomes a COMPASS turn. Boson Higgs Realtime remains as the second provider; browser speech is the last fallback. The UI says which voice is active. No API key reaches the browser.
-- `/api/turn` dinner-planning agent (real OpenStreetMap restaurant search) still runs behind the same runtime and is used by the tests.
+Node 22.12+. `npm ci`, `npm run build`, `npm start`.
+Open http://localhost:8770. The public demo uses fictional data and no model APIs.
 
-## Not implemented
+Private collaboration requires PostgreSQL, `DATABASE_URL`, `BETTER_AUTH_SECRET`
+and `BETTER_AUTH_URL`. Use HTTPS in production. Existing invited Better Auth
+accounts are retained; there is no public signup, automatic email or billing.
+Team invitations allow an invited new user to register, then sign in and accept
+membership. Tokens are secrets: share only with the intended recipient.
 
-- Restaurant search is real but read-only: OpenStreetMap (Nominatim + Overpass), `server/tools/osm-restaurant-search.mjs`. Availability is not checked. Nothing is booked, reserved or sent. The offline replay (`?backend=mock`) uses sample data and is labelled as such.
-- The generated page exists only inside the session preview (`/api/site/session/:id/page`, strict CSP, no scripts). Nothing is published, hosted or deployed on anyone's behalf. COMPASS is not a website builder product; the page is the visual use case for changing intent.
-- No accounts, payments, calendar writes or cross-session memory.
-- Multilingual voice is not claimed.
+## What works and what does not
 
-## Develop
+- Public team cockpit with accessible tasks, original context and a scripted
+  approval flow. No cartoon office, fabricated presence or productivity scores.
+- Separate PostgreSQL workspace domain, owner/member permissions, versioned
+  task changes, one-use invitations and source/audit records.
+- Text, TXT, Markdown and CSV task imports with preview. Uploaded content is
+  data, not permission to execute instructions. PDF/connectors are not included.
+- Public demo interactions and sample recommendations are explicitly scripted.
+- The AI runtime is **BLOCKED** until a human-workspace contract is implemented
+  and verified. The existing simulated REMaster runtime is not sufficient.
+  Manual collaboration does not depend on that runtime. No autonomous learning,
+  lossless compression, provider success or long-horizon performance is claimed.
 
-```sh
-npm ci
-cp .env.example .env        # GENERALCOMPUTE_API_KEY, GRADIUM_API_KEY, NEBIUS_API_KEY, BOSON_API_KEY: server-side only, never VITE_
-npm run doctor              # presence check, never prints values
-npm run typecheck
-npm test                    # offline suite
-npm run build && npm run start:local   # http://localhost:8770
-```
+## Routes
 
-Live checks (need keys): `npm run test:live` (GLM), `npm run probe:boson`, `npm run test:voice:live` (real Boson voice, incl. barge-in).
+| Route | Purpose |
+| --- | --- |
+| `/`, `/demo/workspace` | Immediate populated local demo; no account or model calls |
+| `/presentation` | Final narrative with speaker notes and embedded Horizon |
+| `/horizon` | Browser-only long-horizon simulation; 2D, 3D and Phone |
+| `/app`, `/login?returnTo=/app` | Real team account, requires configured DB/auth |
+| `/demo`, `/voice-demo` | Existing voice-to-site prototype, not team-runtime integration |
+| `/presentation/legacy` | Previous cinematic deck, including its Horizon scene and film |
+| `/demo/table`, `/demo/remaster` | Previous table and memory simulation examples |
+| `/acquisition`, `/acquisition/app` | Previous acquisition domain, unchanged storage |
 
-## Source layout
+Horizon percentages and revenue are illustrative simulation inputs/results,
+not customer outcomes or measured model confidence. Workspace proposals are
+scripted and local. Voice/provider capabilities are separate and are not
+represented as connected to team memory. No paid model call is made merely by
+opening the public workspace or presentation. `/present` and `/story` redirect
+to the final presentation. There are no new billing services or public signup.
 
-- `index.html`, `story.html`, `src/site/`, `src/cinematic/`: website and presentation.
-- `live.html`, `src/components/`, `src/voice/`: the `/demo` agent UI.
-- `present.html`, `src/presentation/stage/`: earlier stage deck, kept in the build but not routed (`/present` redirects to `/presentation`).
-- `server.mjs`, `server/`: static server, `/healthz`, `/api/health`, `/api/turn`, voice bridge, intent state, tools.
-- `test/`: offline and live tests.
-- `boson-claude-cli-bridge/`: separate local prototype (Python, runs on a laptop with the Claude CLI). Not deployed and not part of the public demo.
+## Verification and release
 
-## Deploy
+Run `npm run build`, `npm test`, `npm run test:workspaces` and
+`npm run qa:workspace`. Database tests require an explicit local test DSN; see
+`docs/WORKSPACE_RELEASE.md`. Never run cleanup tests against production.
 
-GitHub `main` is the source. Railway (existing service `compass-web`) builds the `Dockerfile` on push to `main` and serves https://mycompass.world. Secrets live only in Railway variables.
+See `docs/WORKSPACE_API.md` for the workspace contract and
+`docs/FINAL_RELEASE.md` for this public-demo release and
+`docs/WORKSPACE_RELEASE.md` for private-SaaS gates. A local screenshot
+or HTTP 200 is not proof of a deployed collaborative SaaS.
+
+## Attribution
+
+Selective movement/facing adaptation and visual-interaction reference:
+[KbWen/agent-virtual-office](https://github.com/KbWen/agent-virtual-office), pinned
+at `c238a30d51881fb2add5a0a875736d6e32ce542c`, MIT. Notice is served at
+`/third-party/agent-virtual-office-LICENSE.txt`. No upstream session scanners,
+coding-agent hooks or installers are imported. COMPASS's shared-workspace
+backend is separate from that project.
