@@ -12,25 +12,26 @@ const videoNodes = Object.values(worlds).map(el => el.querySelector('video'));
 const orb = $('.orb-position');
 const voice = { stop() {} }; // no voice on the story page; the live voice lives at /demo
 const notes = [
- 'Hi everyone. We have spent years learning how to talk to computers. Clicking. Typing. Learning interfaces. And now, with AI, we are still doing basically the same thing: prompting machines. But what if instead you could simply express what you want, and watch it become real? That is what we built. This is COMPASS.',
+ 'Six people. One shared memory. One team. Every team carries its context in six different heads: calls, threads, decisions. This is COMPASS.',
  'Play the film. Do not talk over it. Let it finish.',
- 'That is the experience we wanted to create. Not another prompt box. An agent you can actually direct with your voice.',
- 'Open the website and let it build itself: one sentence builds a cool, generic site; a second sentence, mid-build, makes it warmer and bolder without starting over. That is the visual language of COMPASS. The interesting part is what happens when we stop watching the concept and actually use it.',
- 'Go to the demo. We needed a task where you could actually see intelligence working. We chose building a website. Not because COMPASS is just a website builder, but because it makes the interaction visible. Let us build one.',
- 'Voice prompt one: Build me a premium website for an AI company. Make it minimal, dark and cinematic. Pause. Let the site build.',
- 'Voice prompt two, while it is still working: Actually, make it warmer. Make the hero more ambitious, and add a pricing section.',
- 'Only what changed changes. AI company, premium and minimal are kept. COMPASS keeps acting, no restart.',
- 'The brief after the change: dark becomes warm, the hero becomes ambitious, pricing is added, everything else is kept.',
+ 'COMPASS is an intelligent virtual office. One shared memory underneath the team.',
+ 'Six people, six contexts. Everyone works alone. Open the website to show the office.',
+ 'Underneath the office, one memory. Who knows what, what happened, why it was decided. Every item keeps its source. Now watch it adapt: open the proof.',
+ 'Proof. The agent is already acting. Voice prompt one: Build me a premium website for an AI company. Make it minimal, dark and cinematic. Let it act.',
+ 'While it is still acting, change the intent: Actually, make it warmer. Make the hero more ambitious, and add a pricing section. Mid-action, no restart.',
+ 'It knows what depends on what. It keeps what still holds, drops what the change invalidated, and adapts the next action.',
+ 'The plan after the change: kept, updated, added. Not rebuilt from scratch.',
  'Vincent: how it runs. The conversation continues while the work runs: an instant model keeps contact, the smart agent refines the request with useful questions, heavy tasks run in parallel.',
  'Vincent: under the hood. Voice runs through Gradium realtime over a server-side bridge: streaming speech to text with semantic turn detection, streaming speech back, and a barge-in simply becomes the next turn. Reasoning runs on General Compute, MiniMax M2.7: every sentence becomes a structured brief, and a change patches only the fields that moved. Then only the sections that depend on the change are rewritten and the page renders live in a sandbox. The reply comes back at once while the copy keeps running; a new sentence cancels only what it invalidated. Nebius GLM-5.3, Boson Higgs and browser speech stay wired as fallbacks.',
- 'And websites are only the beginning. What we really built is a different relationship between humans and AI. Today we directed a website. The same interaction can eventually direct software, research, workflows, creative work, anything an agent can act on. We believe the next interface is not another dashboard.',
- 'COMPASS understands. COMPASS acts. Your intent becomes software. Thank you.'
+ 'Coordinate and act. The client moves launch to October 3. COMPASS resolves goal, owner, constraint, decision and next action. Maya, Leo and Ana get their next move. The other three keep working.',
+ 'Memory. Press play on the horizon: day by day the agent learns, compresses the history, and revises when late facts arrive. Smarter every week. The reason behind every decision stays.',
+ 'Six people. One shared memory. One team. Website, proof and memory are all linked here. Thank you.'
 ];
 let starts = [], active = -1, position = 0, queued = false;
 let motionPaused = reducedQuery.matches, playing = false, timer = 0, scrollAnimation = 0;
 let corrected = false;
 let media = {};
-const F = 0; // stage order: open, film, experience, website, demo, prompt 1, prompt 2, adapt, brief, how it runs, under the hood, beyond, close
+const F = 0; // stage order: open, film, idea, individuals, shared memory, proof act, change, adapt, plan, how it runs, under the hood, coordinate, memory, close
 const LAST = scenes.length - 1;
 const FILM = scenes.indexOf($('#scene-film'));
 const CORRECTION = scenes.indexOf($('#scene-6'));
@@ -44,12 +45,12 @@ const sceneMedia = { 0: 'chaos', 5: 'speak' };
 const orbPos = [
  [80, 52, .28, 0], [50, 50, .2, 0], [50, 30, .92, 1], [50, 29, .62, 1],
  [80, 48, .53, .9], [81, 45, .44, 1], [81, 45, .44, 1], [50, 28, .58, 1],
- [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [88, 18, .2, 0], [50, 17, .36, .8], [50, 18, .48, 1]
+ [50, 77, .18, 1], [88, 18, .2, 0], [88, 18, .2, 0], [50, 17, .36, .8], [88, 18, .2, 0], [50, 18, .48, 1]
 ];
 const mobileOrbPos = [
  [75, 35, .25, 0], [50, 50, .2, 0], [50, 31, 1, 1], [50, 27, .7, 1],
  [84, 24, .3, .6], [84, 23, .3, .6], [84, 23, .3, .6], [50, 29, .7, 1],
- [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [86, 17, .18, 0], [50, 16, .4, .7], [50, 17, .55, 1]
+ [50, 90, .14, 1], [86, 17, .18, 0], [86, 17, .18, 0], [50, 16, .4, .7], [86, 17, .18, 0], [50, 17, .55, 1]
 ];
 
 $('#contents').innerHTML = scenes.map((s, i) => `<a href="#${s.id}" data-scene="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${s.dataset.label}</a>`).join('');
@@ -78,7 +79,7 @@ function resetCorrection() {
  $('.new-concern').hidden = true;
  $('#correct').innerHTML = 'Interrupt <span aria-hidden="true">↗</span>';
  $('#correct').setAttribute('aria-pressed', 'false');
- $('#correction-note').textContent = 'MID-BUILD. NO RESTART.';
+ $('#correction-note').textContent = 'MID-ACTION. NO RESTART.';
 }
 function setActive(index) {
  if (index === active) return;
@@ -173,7 +174,7 @@ function goTo(index, animate = true) {
 }
 function queueAdvance() {
  const current = Math.round(scrollPosition());
-  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 8000 : current === 10 ? 9000 : current === 11 ? 16000 : 5000;
+  const delay = current === CORRECTION ? 7500 : current === 8 ? 9500 : current === 9 ? 8000 : current === 10 ? 9000 : current === 12 ? 16000 : 5000;
  // On the film scene, autoplay does not cut the film: it starts it and hands control to the presenter.
  if (current === FILM) { stopAuto(); startFilm(); return; }
  timer = window.setTimeout(() => {

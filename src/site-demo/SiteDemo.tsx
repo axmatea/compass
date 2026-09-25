@@ -20,7 +20,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'headline', label: 'Headline' }, { key: 'cta', label: 'Button' }, { key: 'sections', label: 'Sections' },
 ]
 const SECTION_NAMES: Record<string, string> = { hero: 'Hero', features: 'Features', products: 'Products', gallery: 'Gallery', testimonials: 'Testimonials', pricing: 'Pricing', faq: 'FAQ', contact: 'Contact', signup: 'Signup' }
-const S = { disclosure: 'Concept demo · The page is rendered for this session only · Nothing is published or deployed', empty: 'Say what you want to build.', emptyHint: 'Then change your mind. COMPASS updates only what changed.', writing: 'Writing', placeholder: 'placeholder copy', preview: 'Preview', open: 'Open page', brief: 'The brief', build: 'Build', updated: 'Updated' }
+const S = { disclosure: 'Proof of COMPASS: change your intent while the agent is acting · The page is only the visible example · Rendered for this session, nothing is published', empty: 'Say what you want to build.', emptyHint: 'Then change your mind mid-action. COMPASS keeps what holds and adapts the next step.', writing: 'Writing', placeholder: 'placeholder copy', preview: 'Preview', open: 'Open page', brief: 'The brief', build: 'Build', updated: 'Updated' }
 
 function Mic() { return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.4" /><path d="M6 11a6 6 0 0 0 12 0m-6 6v4m-3 0h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> }
 function Arrow() { return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg> }
