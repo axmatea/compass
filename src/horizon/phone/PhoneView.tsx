@@ -162,7 +162,7 @@ export default function PhoneView(props: PhoneProps) {
                   )}
                 </svg>
               </button>
-              <span className="ph-honest">{frame.clock.simulated ? "Demo data, simulated clock" : "Live data"}</span>
+              <span className="ph-honest">{frame.clock.simulated ? "Simulation · not real revenue" : "Live data"}</span>
             </footer>
           </main>
         </div>

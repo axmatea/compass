@@ -45,7 +45,7 @@ export function createCompassBackend({ env = process.env, interpreter, siteInter
     voice,
     handleApi: createApiHandler({ runtime, siteRuntime, health, voice, logger }),
     /** Mount the realtime voice WebSocket on an http.Server (upgrade on /api/voice/realtime[?domain=site]). */
-    attachVoice: (httpServer) => attachVoiceServer(httpServer, { runtime, runtimes, config, connectUpstream, connectGradiumUpstream, logger }),
+    attachVoice: (httpServer, options = {}) => attachVoiceServer(httpServer, { runtime, runtimes, config, connectUpstream, connectGradiumUpstream, logger, ...options }),
     config: describeConfig(config),
   };
 }

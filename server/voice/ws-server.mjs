@@ -9,14 +9,14 @@ import { connectGradium } from './gradium.mjs';
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
-export function attachVoiceServer(httpServer, { runtime, runtimes = null, config, connectUpstream, connectGradiumUpstream, maxPerIp = 3, maxTotal = 20, logger = console }) {
+export function attachVoiceServer(httpServer, { runtime, runtimes = null, config, connectUpstream, connectGradiumUpstream, maxPerIp = 3, maxTotal = 20, logger = console, authorizeDomain }) {
   // Provider: config.voiceProvider (gradium | boson | browser). Test doubles: connectUpstream (Boson), connectGradiumUpstream (Gradium).
   const provider = connectGradiumUpstream ? 'gradium' : connectUpstream ? 'boson' : (config.voiceProvider || (config.boson?.apiKey ? 'boson' : 'browser'));
   const wss = new WebSocketServer({ noServer: true, maxPayload: 512 * 1024, perMessageDeflate: false });
   const perIp = new Map();
   let total = 0;
 
-  httpServer.on('upgrade', (req, socket, head) => {
+  httpServer.on('upgrade', async (req, socket, head) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname !== '/api/voice/realtime') return; // other upgrade handlers may claim it
     // Same-origin only (browser sends Origin; non-browser test clients may omit it).
@@ -24,10 +24,15 @@ export function attachVoiceServer(httpServer, { runtime, runtimes = null, config
     if (origin) {
       try { if (new URL(origin).host !== req.headers.host) { socket.destroy(); return; } } catch { socket.destroy(); return; }
     }
-    wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, req, url));
+    let authorizedRuntime;
+    if(url.searchParams.get('domain')==='acquisition'){
+      try{if(!authorizeDomain)throw new Error('Acquisition unavailable');authorizedRuntime=await authorizeDomain(req,url);if(!authorizedRuntime)throw new Error('Unauthorized');}
+      catch{socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');socket.destroy();return;}
+    }
+    if(!socket.destroyed)wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, req, url, authorizedRuntime));
   });
 
-  function onConnection(ws, req, url) {
+  function onConnection(ws, req, url, authorizedRuntime) {
     const ip = req.socket.remoteAddress || 'unknown';
     const client = {
       sendJson: (o) => { if (ws.readyState === 1) ws.send(JSON.stringify(o)); },
@@ -45,7 +50,10 @@ export function attachVoiceServer(httpServer, { runtime, runtimes = null, config
 
     const sid = url.searchParams.get('sessionId');
     const domain = url.searchParams.get('domain') || 'dinner';
-    const rt = (runtimes && runtimes[domain]) || runtime;
+    const rt = authorizedRuntime || (runtimes && runtimes[domain]) || runtime;
+    const authTimer=authorizedRuntime?.isAuthorized?setInterval(async()=>{if(!await authorizedRuntime.isAuthorized())client.close(4401,'session_expired');},5000):null;
+    authTimer?.unref();
+    ws.on('close',()=>clearInterval(authTimer));
     const sessionArg = sid ? (ID_RE.test(sid) ? sid : 'invalid') : undefined; // 'invalid' -> reset flagged
     const bridge = provider === 'gradium'
       ? createGradiumBridge({
